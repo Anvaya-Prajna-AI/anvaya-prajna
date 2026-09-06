@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://anvaya-prajna.ai/schemas/v1/math-expression.schema.json",
+  "title": "MathExpression",
+  "description": "Semantic and display mathematical expression specification",
+  "type": "object",
+  "properties": {
+    "latex": { "type": "string" },
+    "mathml": { "type": "string" },
+    "mathJson": { "type": "string" },
+    "semanticAst": { "type": "object" },
+    "rawText": { "type": "string" }
+  }
+}

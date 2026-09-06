@@ -1,0 +1,10 @@
+.git
+.gradle
+.idea
+build
+*/build
+*/*/build
+*.iml
+.DS_Store
+*.log
+.system_generated

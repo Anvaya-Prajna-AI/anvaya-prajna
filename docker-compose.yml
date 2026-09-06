@@ -1,0 +1,101 @@
+services:
+  # ============================================================
+  # PostgreSQL 16 Database
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: anvaya-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-anvayadb}
+      POSTGRES_USER: ${POSTGRES_USER:-anvaya}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-anvaya_secret}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-anvaya} -d ${POSTGRES_DB:-anvayadb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - anvaya-net
+
+  # ============================================================
+  # Redis 7 Cache & Session Store
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: anvaya-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - anvaya-net
+
+  # ============================================================
+  # Anvaya Prajna Explain Service
+  # ============================================================
+  explain-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: anvaya-prajna/explain-service:latest
+    container_name: anvaya-explain-service
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Database Connection
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-anvayadb}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-anvaya}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-anvaya_secret}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+
+      # JPA & Flyway
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+
+      # Redis Cache
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+      # AI Provider (OpenAI / Spring AI)
+      SPRING_AI_OPENAI_API_KEY: ${OPENAI_API_KEY:-test-key}
+      SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+
+      # JVM / Logging
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx768m"
+      LOGGING_LEVEL_AI_ANVAYA_PRAJNA: DEBUG
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    networks:
+      - anvaya-net
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  anvaya-net:
+    driver: bridge

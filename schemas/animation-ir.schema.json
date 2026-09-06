@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://anvaya-prajna.ai/schemas/v1/animation-ir.schema.json",
+  "title": "AnimationIR",
+  "description": "Declarative and semantic animation specification",
+  "type": "object",
+  "properties": {
+    "durationMs": { "type": "integer" },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["at", "action", "target"],
+        "properties": {
+          "at": { "type": "integer", "description": "Timestamp in milliseconds from start" },
+          "action": {
+            "type": "string",
+            "enum": [
+              "SHOW",
+              "HIDE",
+              "HIGHLIGHT",
+              "EMPHASIZE",
+              "FOCUS",
+              "MOVE",
+              "DRAW",
+              "TRANSFORM",
+              "REVEAL",
+              "PAUSE",
+              "RESET"
+            ]
+          },
+          "target": { "type": "string" },
+          "operation": { "type": "string" },
+          "value": {},
+          "parameters": { "type": "object" }
+        }
+      }
+    }
+  }
+}

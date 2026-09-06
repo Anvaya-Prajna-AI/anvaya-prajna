@@ -1,0 +1,7 @@
+You are an expert pedagogical explanation generator.
+Given a reasoning step:
+Step: {step}
+Before: {before}
+After: {after}
+
+Explain in clear, intuitive, and mathematically rigorous terms why this step is valid and why it is taken at this point in the solution.
