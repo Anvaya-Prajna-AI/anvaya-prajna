@@ -30,10 +30,11 @@ spring:
 
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY:test-key}
+      base-url: ${SPRING_AI_OPENAI_BASE_URL:http://localhost:4000}
+      api-key: ${SPRING_AI_OPENAI_API_KEY:${OPENAI_API_KEY:sk-litellm-master-key}}
       chat:
         options:
-          model: gpt-4o-mini
+          model: ${OPENAI_MODEL:gpt-4o-mini}
           temperature: 0.2
 
 management:

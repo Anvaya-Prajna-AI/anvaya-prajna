@@ -18,6 +18,8 @@ import ai.anvaya.prajna.repository.ExplanationStepRepository;
 import ai.anvaya.prajna.validation.ValidationResult;
 import ai.anvaya.prajna.validation.ValidationStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,8 @@ import java.util.UUID;
 
 @Service
 public class ExplanationService {
+
+    private static final Logger log = LoggerFactory.getLogger(ExplanationService.class);
 
     private final ReasoningService reasoningService;
     private final ValidationService validationService;
@@ -57,11 +61,20 @@ public class ExplanationService {
 
     @Transactional
     public ExplanationIR generateExplanation(Question question, ExplanationPolicy policy) {
+        if (question.getQuestionId() == null || question.getQuestionId().isBlank()) {
+            question.setQuestionId(UUID.randomUUID().toString());
+        }
+
+        log.info("generateExplanation called for questionId: {}", question.getQuestionId());
+
         String cacheKey = cacheService.computeCacheKey(question.getQuestionId(), policy);
         Optional<ExplanationIR> cached = cacheService.get(cacheKey);
         if (cached.isPresent()) {
+            log.info("Cache hit for key: {}", cacheKey);
             return cached.get();
         }
+
+        log.info("Cache miss for key: {}", cacheKey);
 
         // 1. Generate Reasoning Proposal
         ReasoningProposal proposal = reasoningService.generateReasoning(question);
@@ -93,7 +106,8 @@ public class ExplanationService {
                     .createdAt(Instant.now())
                     .build();
 
-            explanationRepository.save(entity);
+            ExplanationEntity saved = explanationRepository.saveAndFlush(entity);
+            log.info("Saved explanation entity: id={}, questionId={}", saved.getId(), saved.getQuestionId());
 
             if (ir.getSteps() != null) {
                 for (ReasoningStep step : ir.getSteps()) {
@@ -107,11 +121,12 @@ public class ExplanationService {
                             .build();
                     stepRepository.save(stepEntity);
                 }
+                stepRepository.flush();
             }
 
             validationService.recordValidationResult(explanationUuid, validationResult);
         } catch (Exception e) {
-            // Log persistence error
+            log.error("Persistence error during explanation generation: ", e);
         }
 
         // 5. Cache
@@ -121,11 +136,15 @@ public class ExplanationService {
     }
 
     public ExplanationIR getExplanationByQuestionId(String questionId) {
-        ExplanationEntity entity = explanationRepository.findFirstByQuestionIdOrderByVersionDesc(questionId)
-                .orElseThrow(() -> new ExplanationNotFoundException("Explanation not found for question ID: " + questionId));
+        log.info("Finding explanation for questionId={}", questionId);
+        Optional<ExplanationEntity> entityOpt = explanationRepository.findFirstByQuestionIdOrderByVersionDesc(questionId);
+        if (entityOpt.isEmpty()) {
+            log.warn("No entity found for questionId={}. Total entities in repo={}", questionId, explanationRepository.count());
+            throw new ExplanationNotFoundException("Explanation not found for question ID: " + questionId);
+        }
 
         try {
-            return objectMapper.readValue(entity.getContentJson(), ExplanationIR.class);
+            return objectMapper.readValue(entityOpt.get().getContentJson(), ExplanationIR.class);
         } catch (Exception e) {
             throw new RuntimeException("Failed to deserialize explanation IR", e);
         }

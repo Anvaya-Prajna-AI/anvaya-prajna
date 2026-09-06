@@ -32,9 +32,9 @@ dependencies {
     implementation libs.flyway.core
     implementation libs.flyway.postgres
 
-    // OpenTelemetry
-    implementation libs.otel.api
-    implementation libs.otel.sdk
+    // OpenTelemetry & Tracing
+    implementation 'io.opentelemetry:opentelemetry-api'
+    implementation 'io.opentelemetry:opentelemetry-sdk'
     implementation 'io.micrometer:micrometer-tracing-bridge-otel'
 
     // Lombok

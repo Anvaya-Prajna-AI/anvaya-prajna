@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS explanation_validation (
     explanation_id UUID NOT NULL REFERENCES explanation(id) ON DELETE CASCADE,
     validator VARCHAR(64) NOT NULL,
     status VARCHAR(32) NOT NULL,
-    score NUMERIC(4,3),
+    score DOUBLE PRECISION,
     details_json TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
