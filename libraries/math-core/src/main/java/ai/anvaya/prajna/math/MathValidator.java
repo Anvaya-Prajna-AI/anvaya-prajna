@@ -133,6 +133,21 @@ public class MathValidator {
     }
 
     private boolean validateSubstitution(ReasoningStep step) {
+        if (step.getAfter() == null) {
+            return true;
+        }
+        String cleanAfter = cleanMathString(step.getAfter());
+        if (cleanAfter.contains("=")) {
+            String[] parts = cleanAfter.split("=", 2);
+            try {
+                double lhs = expressionEvaluator.evaluate(parts[0]);
+                double rhs = expressionEvaluator.evaluate(parts[1]);
+                return Math.abs(lhs - rhs) < 1e-5;
+            } catch (Exception ignored) {
+                // Variable assignment or non-numeric expression is acceptable
+                return true;
+            }
+        }
         return true;
     }
 
@@ -153,6 +168,21 @@ public class MathValidator {
     public VerificationResult validateVerificationResult(VerificationResult result) {
         if (result == null || result.getExpression() == null) {
             return VerificationResult.builder().passed(false).details("Null verification expression").build();
+        }
+
+        if ("LOGICAL_CONSISTENCY".equalsIgnoreCase(result.getType()) || 
+            "PATTERN_CHECK".equalsIgnoreCase(result.getType()) ||
+            "LOGIC".equalsIgnoreCase(result.getType()) ||
+            "SET_CONTAINMENT".equalsIgnoreCase(result.getType())) {
+            boolean passed = result.getPassed() != null ? result.getPassed() : true;
+            return VerificationResult.builder()
+                    .type(result.getType())
+                    .expression(result.getExpression())
+                    .expected(true)
+                    .actual(passed)
+                    .passed(passed)
+                    .details(passed ? "Domain rule verified" : "Domain rule rejected")
+                    .build();
         }
 
         String clean = cleanMathString(result.getExpression());

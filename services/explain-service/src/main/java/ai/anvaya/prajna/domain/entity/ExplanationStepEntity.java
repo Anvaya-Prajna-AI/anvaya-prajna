@@ -32,7 +32,6 @@ public class ExplanationStepEntity {
     @Column(name = "step_type", nullable = false)
     private String stepType;
 
-    @Lob
     @Column(name = "content_json", nullable = false, columnDefinition = "TEXT")
     private String contentJson;
 

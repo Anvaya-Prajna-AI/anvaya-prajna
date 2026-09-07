@@ -29,7 +29,6 @@ public class ExplanationTemplateEntity {
     @Column(name = "template_type", nullable = false)
     private String templateType;
 
-    @Lob
     @Column(name = "content_json", nullable = false, columnDefinition = "TEXT")
     private String contentJson;
 

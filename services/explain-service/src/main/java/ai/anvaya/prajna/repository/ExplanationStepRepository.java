@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface ExplanationStepRepository extends JpaRepository<ExplanationStepEntity, UUID> {
     List<ExplanationStepEntity> findByExplanationIdOrderBySequenceAsc(UUID explanationId);
+    java.util.Optional<ExplanationStepEntity> findByExplanationIdAndSequence(UUID explanationId, Integer sequence);
 }

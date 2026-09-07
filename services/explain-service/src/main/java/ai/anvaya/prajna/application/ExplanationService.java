@@ -91,12 +91,18 @@ public class ExplanationService {
 
         // 4. Persist
         UUID explanationUuid = UUID.randomUUID();
+        int nextVersion = 1;
+        Optional<ExplanationEntity> latest = explanationRepository.findFirstByQuestionIdOrderByVersionDesc(question.getQuestionId());
+        if (latest.isPresent() && latest.get().getVersion() != null) {
+            nextVersion = latest.get().getVersion() + 1;
+        }
+
         try {
             String contentJson = objectMapper.writeValueAsString(ir);
             ExplanationEntity entity = ExplanationEntity.builder()
                     .id(explanationUuid)
                     .questionId(question.getQuestionId())
-                    .version(1)
+                    .version(nextVersion)
                     .status(ExplanationStatus.APPROVED.name())
                     .difficulty(question.getDifficulty() != null ? question.getDifficulty() : "MEDIUM")
                     .language("en")
@@ -107,7 +113,7 @@ public class ExplanationService {
                     .build();
 
             ExplanationEntity saved = explanationRepository.saveAndFlush(entity);
-            log.info("Saved explanation entity: id={}, questionId={}", saved.getId(), saved.getQuestionId());
+            log.info("Saved explanation entity: id={}, questionId={}, version={}", saved.getId(), saved.getQuestionId(), saved.getVersion());
 
             if (ir.getSteps() != null) {
                 for (ReasoningStep step : ir.getSteps()) {
@@ -147,6 +153,69 @@ public class ExplanationService {
             return objectMapper.readValue(entityOpt.get().getContentJson(), ExplanationIR.class);
         } catch (Exception e) {
             throw new RuntimeException("Failed to deserialize explanation IR", e);
+        }
+    }
+
+    public ReasoningStep getStep(UUID explanationId, String stepId) {
+        Optional<ExplanationEntity> expOpt = explanationRepository.findById(explanationId);
+        if (expOpt.isEmpty()) {
+            throw new ExplanationNotFoundException("Explanation not found for ID: " + explanationId);
+        }
+
+        try {
+            ExplanationIR ir = objectMapper.readValue(expOpt.get().getContentJson(), ExplanationIR.class);
+            if (ir.getSteps() != null) {
+                for (ReasoningStep step : ir.getSteps()) {
+                    if (stepId.equalsIgnoreCase(step.getId()) || String.valueOf(step.getSequence()).equals(stepId)) {
+                        return step;
+                    }
+                }
+            }
+            throw new ExplanationNotFoundException("Step " + stepId + " not found in explanation " + explanationId);
+        } catch (ExplanationNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load step " + stepId, e);
+        }
+    }
+
+    @Transactional
+    public ExplanationIR reviewExplanation(UUID explanationId, boolean approved, String comment) {
+        ExplanationEntity entity = explanationRepository.findById(explanationId)
+                .orElseThrow(() -> new ExplanationNotFoundException("Explanation not found: " + explanationId));
+
+        ExplanationStatus newStatus = approved ? ExplanationStatus.APPROVED : ExplanationStatus.REJECTED;
+        entity.setStatus(newStatus.name());
+        entity.setUpdatedAt(Instant.now());
+
+        try {
+            ExplanationIR ir = objectMapper.readValue(entity.getContentJson(), ExplanationIR.class);
+            ir.setStatus(newStatus);
+            entity.setContentJson(objectMapper.writeValueAsString(ir));
+            explanationRepository.saveAndFlush(entity);
+            return ir;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update explanation review status", e);
+        }
+    }
+
+    @Transactional
+    public ExplanationIR publishExplanation(UUID explanationId) {
+        ExplanationEntity entity = explanationRepository.findById(explanationId)
+                .orElseThrow(() -> new ExplanationNotFoundException("Explanation not found: " + explanationId));
+
+        entity.setStatus(ExplanationStatus.PUBLISHED.name());
+        entity.setPublishedAt(Instant.now());
+        entity.setUpdatedAt(Instant.now());
+
+        try {
+            ExplanationIR ir = objectMapper.readValue(entity.getContentJson(), ExplanationIR.class);
+            ir.setStatus(ExplanationStatus.PUBLISHED);
+            entity.setContentJson(objectMapper.writeValueAsString(ir));
+            explanationRepository.saveAndFlush(entity);
+            return ir;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to publish explanation", e);
         }
     }
 

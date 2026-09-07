@@ -40,7 +40,6 @@ public class ExplanationEntity {
     @Column(name = "schema_version", nullable = false)
     private String schemaVersion;
 
-    @Lob
     @Column(name = "content_json", nullable = false, columnDefinition = "TEXT")
     private String contentJson;
 
