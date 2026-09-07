@@ -4,6 +4,7 @@
 build
 */build
 */*/build
+!services/explain-service/build/libs/*.jar
 *.iml
 .DS_Store
 *.log

@@ -35,7 +35,6 @@ public class ExplanationValidationEntity {
 
     private Double score;
 
-    @Lob
     @Column(name = "details_json", columnDefinition = "TEXT")
     private String detailsJson;
 

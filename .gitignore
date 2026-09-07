@@ -25,3 +25,14 @@ Thumbs.db
 
 # Environment
 .env
+
+# Node / Frontend
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+dist-app/
+**/dist-app/
+*.tsbuildinfo
+
+

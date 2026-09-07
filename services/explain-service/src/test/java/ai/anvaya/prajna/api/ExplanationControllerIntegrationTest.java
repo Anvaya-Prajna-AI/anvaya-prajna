@@ -143,6 +143,9 @@ class ExplanationControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value("PASSED"));
     }
 
+    @Autowired
+    private ai.anvaya.prajna.repository.ExplanationRepository explanationRepository;
+
     @Test
     void shouldSubmitFeedback() throws Exception {
         UUID expId = UUID.randomUUID();
@@ -156,5 +159,99 @@ class ExplanationControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(feedback)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldSupportLifecycleAndStepEndpoints() throws Exception {
+        Question question = Question.builder()
+                .questionId("q-lifecycle-test")
+                .statement("Solve for x: 2x + 4 = 10")
+                .domain("ALGEBRA")
+                .authoritativeAnswer("3")
+                .build();
+
+        GenerateExplanationRequest request = GenerateExplanationRequest.builder()
+                .question(question)
+                .build();
+
+        // 1. Generate explanation
+        mockMvc.perform(post("/api/v1/explanations/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questionId").value("q-lifecycle-test"));
+
+        var entityOpt = explanationRepository.findFirstByQuestionIdOrderByVersionDesc("q-lifecycle-test");
+        assertThat(entityOpt).isPresent();
+        UUID entityId = entityOpt.get().getId();
+        assertThat(entityOpt.get().getVersion()).isEqualTo(1);
+
+        // 2. Query specific step
+        mockMvc.perform(get("/api/v1/explanations/" + entityId + "/steps/s1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("s1"));
+
+        // 3. Review explanation
+        ai.anvaya.prajna.api.dto.ReviewExplanationRequest reviewRequest = ai.anvaya.prajna.api.dto.ReviewExplanationRequest.builder()
+                .approved(true)
+                .reviewerId("teacher-1")
+                .comment("Approved for publication")
+                .build();
+
+        mockMvc.perform(post("/api/v1/explanations/" + entityId + "/review")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reviewRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
+
+        // 4. Publish explanation
+        mockMvc.perform(post("/api/v1/explanations/" + entityId + "/publish"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PUBLISHED"));
+
+        // 5. Verify published entity in repository
+        var updated = explanationRepository.findById(entityId).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo("PUBLISHED");
+        assertThat(updated.getPublishedAt()).isNotNull();
+    }
+
+    @Test
+    void shouldIncrementVersionOnSubsequentGenerations() throws Exception {
+        Question question = Question.builder()
+                .questionId("q-version-test")
+                .statement("Solve for x: 3x + 3 = 12")
+                .domain("ALGEBRA")
+                .authoritativeAnswer("3")
+                .build();
+
+        GenerateExplanationRequest request = GenerateExplanationRequest.builder()
+                .question(question)
+                .build();
+
+        // First generation -> version 1
+        mockMvc.perform(post("/api/v1/explanations/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        var v1Entity = explanationRepository.findFirstByQuestionIdOrderByVersionDesc("q-version-test");
+        assertThat(v1Entity).isPresent();
+        assertThat(v1Entity.get().getVersion()).isEqualTo(1);
+
+        // Second generation with a different policy (to bypass cache or test increment)
+        ExplanationPolicy diffPolicy = ExplanationPolicy.builder().showWhy(true).build();
+        GenerateExplanationRequest requestV2 = GenerateExplanationRequest.builder()
+                .question(question)
+                .policy(diffPolicy)
+                .build();
+
+        mockMvc.perform(post("/api/v1/explanations/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestV2)))
+                .andExpect(status().isOk());
+
+        var v2Entity = explanationRepository.findFirstByQuestionIdOrderByVersionDesc("q-version-test");
+        assertThat(v2Entity).isPresent();
+        assertThat(v2Entity.get().getVersion()).isGreaterThan(1);
     }
 }

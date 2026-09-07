@@ -37,6 +37,30 @@ public class ExplanationController {
         return ResponseEntity.ok(ir);
     }
 
+    @GetMapping("/{id}/steps/{stepId}")
+    public ResponseEntity<ai.anvaya.prajna.ir.ReasoningStep> getStep(
+            @PathVariable UUID id, 
+            @PathVariable String stepId) {
+        ai.anvaya.prajna.ir.ReasoningStep step = explanationService.getStep(id, stepId);
+        return ResponseEntity.ok(step);
+    }
+
+    @PostMapping("/{id}/review")
+    public ResponseEntity<ExplanationIR> review(
+            @PathVariable UUID id, 
+            @RequestBody(required = false) ai.anvaya.prajna.api.dto.ReviewExplanationRequest request) {
+        boolean approved = request == null || request.getApproved() == null || Boolean.TRUE.equals(request.getApproved());
+        String comment = request != null ? request.getComment() : null;
+        ExplanationIR ir = explanationService.reviewExplanation(id, approved, comment);
+        return ResponseEntity.ok(ir);
+    }
+
+    @PostMapping("/{id}/publish")
+    public ResponseEntity<ExplanationIR> publish(@PathVariable UUID id) {
+        ExplanationIR ir = explanationService.publishExplanation(id);
+        return ResponseEntity.ok(ir);
+    }
+
     @PostMapping("/{id}/feedback")
     public ResponseEntity<Void> submitFeedback(@PathVariable UUID id, @Valid @RequestBody FeedbackRequest request) {
         explanationService.submitFeedback(id, request.getStepId(), request.getUserId(), request.getFeedbackType(), request.getComment());

@@ -25,6 +25,10 @@ public class MathTransformationValidator implements ProposalValidator {
         return "MathTransformationValidator";
     }
 
+    private final ai.anvaya.prajna.math.UnitConsistencyChecker unitConsistencyChecker = new ai.anvaya.prajna.math.UnitConsistencyChecker();
+    private static final java.util.regex.Pattern UNIT_PATTERN = 
+            java.util.regex.Pattern.compile("(?i)\\b(km/h|m/s|km|miles|m|cm|mm|hour|hr|h|min|sec|s|kg|g)\\b");
+
     @Override
     public ValidationResult validate(Question question, ReasoningProposal proposal) {
         if (proposal == null || proposal.getSteps() == null) {
@@ -42,6 +46,25 @@ public class MathTransformationValidator implements ProposalValidator {
                         .message("Mathematical operation or calculation in step " + step.getId() + " is invalid.")
                         .severity(ValidationSeverity.ERROR)
                         .build());
+            }
+
+            // Unit consistency check across before and after
+            if (step.getBefore() != null && step.getAfter() != null 
+                    && (step.getType() == ai.anvaya.prajna.ir.StepType.CALCULATE || step.getType() == ai.anvaya.prajna.ir.StepType.TRANSFORM)) {
+                var m1 = UNIT_PATTERN.matcher(step.getBefore());
+                var m2 = UNIT_PATTERN.matcher(step.getAfter());
+                if (m1.find() && m2.find()) {
+                    String u1 = m1.group(1);
+                    String u2 = m2.group(1);
+                    if (!unitConsistencyChecker.areUnitsCompatible(u1, u2)) {
+                        violations.add(ValidationViolation.builder()
+                                .stepId(step.getId())
+                                .code("INCOMPATIBLE_UNITS")
+                                .message("Incompatible dimensional units between '" + u1 + "' and '" + u2 + "' in step " + step.getId())
+                                .severity(ValidationSeverity.WARNING)
+                                .build());
+                    }
+                }
             }
         }
 

@@ -26,6 +26,15 @@ public class LogicValidator implements ProposalValidator {
         List<ValidationViolation> violations = new ArrayList<>();
         Set<String> declaredIds = new HashSet<>();
 
+        Set<String> validSourceIds = new HashSet<>(declaredIds);
+        if (proposal.getFacts() != null) {
+            for (int i = 0; i < proposal.getFacts().size(); i++) {
+                validSourceIds.add("f" + (i + 1));
+                validSourceIds.add("fact-" + (i + 1));
+                validSourceIds.add(String.valueOf(i + 1));
+            }
+        }
+
         for (ReasoningStep step : proposal.getSteps()) {
             if (step.getId() != null) {
                 if (declaredIds.contains(step.getId())) {
@@ -37,12 +46,13 @@ public class LogicValidator implements ProposalValidator {
                             .build());
                 }
                 declaredIds.add(step.getId());
+                validSourceIds.add(step.getId());
             }
 
             // Verify inputs reference known previous steps or facts
             if (step.getInputs() != null) {
                 for (String input : step.getInputs()) {
-                    if (!declaredIds.contains(input) && !input.startsWith("f") && !input.equals(step.getId())) {
+                    if (!validSourceIds.contains(input) && !input.startsWith("f") && !input.startsWith("fact") && !input.equals(step.getId())) {
                         violations.add(ValidationViolation.builder()
                                 .stepId(step.getId())
                                 .code("DANGLING_INPUT_REFERENCE")

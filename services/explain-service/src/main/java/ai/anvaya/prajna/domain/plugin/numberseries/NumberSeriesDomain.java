@@ -45,21 +45,97 @@ public class NumberSeriesDomain implements ExplanationDomain {
         List<ReasoningStep> steps = new ArrayList<>();
         String nextTermStr = "10";
         String patternDesc = "arithmetic sequence with common difference +2";
+        String patternType = "arithmetic-progression";
+        String calculationStepText = "Add the common difference to the last term.";
 
         if (nums.size() >= 2) {
-            int diff = nums.get(1) - nums.get(0);
-            boolean isAp = true;
-            for (int i = 2; i < nums.size(); i++) {
-                if (nums.get(i) - nums.get(i - 1) != diff) {
-                    isAp = false;
-                    break;
+            // 1. Check Geometric Progression (GP)
+            if (nums.get(0) != 0 && nums.get(1) % nums.get(0) == 0) {
+                int ratio = nums.get(1) / nums.get(0);
+                if (ratio > 1) {
+                    boolean isGp = true;
+                    for (int i = 2; i < nums.size(); i++) {
+                        if (nums.get(i - 1) == 0 || nums.get(i) != nums.get(i - 1) * ratio) {
+                            isGp = false;
+                            break;
+                        }
+                    }
+                    if (isGp) {
+                        int nextTerm = nums.get(nums.size() - 1) * ratio;
+                        nextTermStr = String.valueOf(nextTerm);
+                        patternDesc = "geometric sequence with common ratio r = " + ratio;
+                        patternType = "geometric-progression";
+                        calculationStepText = "Multiply the last term (" + nums.get(nums.size() - 1) + ") by common ratio " + ratio + ".";
+                    }
                 }
             }
 
-            if (isAp) {
-                int nextTerm = nums.get(nums.size() - 1) + diff;
-                nextTermStr = String.valueOf(nextTerm);
-                patternDesc = "arithmetic sequence with common difference d = " + diff;
+            // 2. Check Fibonacci / Additive sequence
+            if (nums.size() >= 3 && !patternType.equals("geometric-progression")) {
+                boolean isFib = true;
+                for (int i = 2; i < nums.size(); i++) {
+                    if (nums.get(i) != nums.get(i - 1) + nums.get(i - 2)) {
+                        isFib = false;
+                        break;
+                    }
+                }
+                if (isFib) {
+                    int nextTerm = nums.get(nums.size() - 1) + nums.get(nums.size() - 2);
+                    nextTermStr = String.valueOf(nextTerm);
+                    patternDesc = "Fibonacci-like additive sequence where each term is the sum of the two preceding terms";
+                    patternType = "fibonacci-sequence";
+                    calculationStepText = "Add the last two terms (" + nums.get(nums.size() - 2) + " + " + nums.get(nums.size() - 1) + ").";
+                }
+            }
+
+            // 3. Check Square sequence (e.g. 1, 4, 9, 16, 25)
+            if (nums.size() >= 3 && patternType.equals("arithmetic-progression")) {
+                boolean isSquares = true;
+                List<Integer> roots = new ArrayList<>();
+                for (int num : nums) {
+                    int r = (int) Math.round(Math.sqrt(num));
+                    if (r * r != num) {
+                        isSquares = false;
+                        break;
+                    }
+                    roots.add(r);
+                }
+                if (isSquares && roots.size() >= 2) {
+                    int rootDiff = roots.get(1) - roots.get(0);
+                    for (int i = 2; i < roots.size(); i++) {
+                        if (roots.get(i) - roots.get(i - 1) != rootDiff) {
+                            isSquares = false;
+                            break;
+                        }
+                    }
+                    if (isSquares) {
+                        int nextRoot = roots.get(roots.size() - 1) + rootDiff;
+                        int nextTerm = nextRoot * nextRoot;
+                        nextTermStr = String.valueOf(nextTerm);
+                        patternDesc = "sequence of squares (" + roots + "^2)";
+                        patternType = "square-sequence";
+                        calculationStepText = "Square the next base (" + nextRoot + "^2 = " + nextTerm + ").";
+                    }
+                }
+            }
+
+            // 4. Default / Arithmetic Progression
+            if (patternType.equals("arithmetic-progression")) {
+                int diff = nums.get(1) - nums.get(0);
+                boolean isAp = true;
+                for (int i = 2; i < nums.size(); i++) {
+                    if (nums.get(i) - nums.get(i - 1) != diff) {
+                        isAp = false;
+                        break;
+                    }
+                }
+
+                if (isAp) {
+                    int nextTerm = nums.get(nums.size() - 1) + diff;
+                    nextTermStr = String.valueOf(nextTerm);
+                    patternDesc = "arithmetic sequence with common difference d = " + diff;
+                    calculationStepText = "Add the common difference (" + diff + ") to the last term.";
+                }
             }
         }
 
@@ -86,23 +162,23 @@ public class NumberSeriesDomain implements ExplanationDomain {
                 .id("s3")
                 .sequence(3)
                 .type(StepType.CALCULATE)
-                .before("Last term + difference")
+                .before("Apply sequence pattern to last term")
                 .after("Next term = " + nextTermStr)
-                .justification(StepJustification.builder().text("Add the common difference to the last term.").build())
+                .justification(StepJustification.builder().text(calculationStepText).build())
                 .representations(List.of(RepresentationType.TEXT, RepresentationType.MATH, RepresentationType.ANIMATION))
                 .build());
 
         return ReasoningProposal.builder()
                 .questionId(question.getQuestionId())
-                .problemSummary("Find next term in series")
-                .concepts(List.of("number-series", "arithmetic-progression", "pattern-recognition"))
+                .problemSummary("Find next term in series: " + nums)
+                .concepts(List.of("number-series", patternType, "pattern-recognition"))
                 .facts(List.of("Series terms: " + nums))
                 .steps(steps)
                 .conclusion("The next number in the series is " + nextTermStr)
                 .verification(VerificationResult.builder().type("PATTERN_CHECK").expression("next = " + nextTermStr).passed(true).build())
                 .hints(List.of(
-                        Hint.builder().id("h1").level(1).text("Look at the difference between consecutive numbers.").build(),
-                        Hint.builder().id("h2").level(2).text("Notice that each term increases by the same amount.").build()
+                        Hint.builder().id("h1").level(1).text("Examine the relationship between consecutive numbers in the series.").build(),
+                        Hint.builder().id("h2").level(2).text("Notice that terms follow a " + patternDesc + ".").build()
                 ))
                 .misconceptions(List.of())
                 .build();

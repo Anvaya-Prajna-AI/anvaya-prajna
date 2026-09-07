@@ -84,7 +84,7 @@ services:
       redis:
         condition: service_healthy
       litellm:
-        condition: service_healthy
+        condition: service_started
     environment:
       # Database Connection
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-anvayadb}

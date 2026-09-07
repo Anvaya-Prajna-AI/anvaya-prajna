@@ -36,7 +36,6 @@ public class ExplanationFeedbackEntity {
     @Column(name = "feedback_type", nullable = false)
     private String feedbackType;
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String comment;
 
