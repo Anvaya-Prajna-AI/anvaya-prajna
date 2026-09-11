@@ -22,7 +22,7 @@ export const AnimationRenderer: React.FC<{
       <div className="ep-anim-flow">
         {step.before && (
           <div className="ep-anim-box ep-anim-before">
-            <span className="ep-anim-box-label">Before</span>
+            <span className="ep-anim-box-label">Before </span>
             <code>{step.before}</code>
           </div>
         )}
@@ -34,7 +34,7 @@ export const AnimationRenderer: React.FC<{
 
         {step.after && (
           <div className="ep-anim-box ep-anim-after ep-anim-pulse">
-            <span className="ep-anim-box-label">After</span>
+            <span className="ep-anim-box-label">After </span>
             <code>{step.after}</code>
           </div>
         )}
