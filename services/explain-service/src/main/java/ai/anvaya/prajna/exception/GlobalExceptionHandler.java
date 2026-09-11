@@ -38,6 +38,15 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(SecurityException.class)
+    public ProblemDetail handleSecurityException(SecurityException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setTitle("Forbidden (ASI03 Identity & Privilege Abuse)");
+        problem.setType(URI.create("https://anvaya-prajna.ai/errors/forbidden"));
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGenericException(Exception ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
