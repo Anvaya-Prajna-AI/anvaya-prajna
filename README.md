@@ -4,6 +4,7 @@
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)]()
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.3-green.svg)]()
 [![React](https://img.shields.io/badge/React-18-blue.svg)]()
+[![OWASP Agentic Top 10](https://img.shields.io/badge/OWASP%20Agentic-Compliant-blue.svg)]()
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 **An educational reasoning & explanation engine that transforms assessment questions and verified solutions into structured, student-friendly, multi-modal explanations.**
@@ -22,7 +23,8 @@ Traditional AI-generated answers suffer from hallucinations, inconsistent format
 
 1. **Constrained AI Proposal:** The AI model produces a structured reasoning proposal adhering to strict JSON schemas.
 2. **Deterministic Validation & Normalization:** Mathematical steps, logical dependencies, and schema constraints are rigorously verified.
-3. **Explanation IR (Intermediate Representation):** A canonical contract that downstream renderers (web, mobile, SVG, animation, audio) consume to render rich, synchronized explanations.
+3. **Explanation IR (Intermediate Representation):** A canonical contract (`schemas/explanation-ir.schema.json`) that downstream renderers (web, mobile, SVG, animation, audio) consume to render rich, synchronized explanations.
+4. **OWASP Agentic Top 10 Hardening:** Built-in safeguards against prompt hijack (ASI01), tool misuse (ASI02), identity & privilege abuse (ASI03), supply-chain tampered models (ASI04), unsafe code execution (ASI05), and cascading model failures (ASI08).
 
 ```
 +---------------------+     +--------------------------+     +--------------------------+
@@ -50,7 +52,7 @@ Traditional AI-generated answers suffer from hallucinations, inconsistent format
 
 ## 2. Project Architecture & Modules
 
-The repository is organized as a multi-module Java 21 / Spring Boot 3 backend and React TypeScript UI project:
+The repository is organized into modular libraries, a reusable core engine, an example reference REST microservice, and a React TypeScript UI:
 
 ```
 anvaya-prajna/
@@ -62,24 +64,29 @@ anvaya-prajna/
 │   └── animation-ir.schema.json
 │
 ├── libraries/
-│   ├── explanation-ir/       # Java domain models & JSON Schema serialisation for IR
-│   ├── math-core/            # Deterministic math engine (parsers, symbol verifiers)
-│   ├── reasoning-core/       # Reasoning graph engine, misconception models, scaffolders
-│   └── validation-core/      # JSON Schema validator, math rule checker, semantic audits
+│   ├── explanation-ir/       # Java domain models & JSON Schema serialization for IR
+│   ├── math-core/            # AST expression evaluator (exp4j, safe against RCE/ASI05)
+│   ├── reasoning-core/       # Reasoning graph engine, DAG traversal, step models
+│   ├── validation-core/      # JSON Schema validator, math rule checker, safety guards
+│   └── explain-core/         # Reusable Core Reasoning Engine (ASI03 decoupled)
+│       ├── ai/               # ReasoningPlanner, ModelRouter, OwaspAgentSecurityGuard
+│       ├── application/      # ExplanationService, CompilationService, HintService
+│       ├── cache/            # ExplanationCacheService (Redis L2 caching)
+│       ├── domain/           # 5 Deterministic Domain Plugins (Algebra, Arithmetic, Logic, etc.)
+│       ├── repository/       # Spring Data JPA repositories & entity models
+│       ├── security/         # EngineSecurityContext, Authorizer & RBAC interfaces
+│       └── config/           # @EnableExplanationEngine auto-configuration
 │
 ├── services/
-│   └── explain-service/      # Spring Boot 3 REST microservice
-│       ├── ai/               # AI reasoning planner & prompt engineering
-│       ├── application/      # Orchestration, caching, and domain plugins
-│       ├── config/           # Redis, PostgreSQL, Jackson configuration
-│       ├── controller/       # REST API endpoints & Health indicators
-│       ├── domain/           # 5 Domain Plugins (Math, Physics, Chemistry, Biology, Code)
-│       └── persistence/      # PostgreSQL entities, Flyway migrations, Redis cache
+│   └── explain-service/      # Example Reference Spring Boot REST Microservice
+│       ├── api/              # Controllers (Explanation, Hint, Validation, Why)
+│       ├── security/         # Reference ExampleSecurityContextFilter (Header/JWT mapping)
+│       └── resources/        # Flyway migrations, application.yml, static assets
 │
 ├── packages/
 │   └── explanation-player/   # React 18 / TypeScript / Vite student explanation player
-│       ├── src/components/   # Player, navigator, hint panel, verification & misconception cards
-│       ├── src/renderers/    # KaTeX math, SVG diagrams, reasoning DAG graph, animations
+│       ├── src/components/   # Player, navigator, hint panel, verification cards
+│       ├── src/renderers/    # KaTeX math, SVG diagrams, reasoning DAG graph
 │       ├── Dockerfile        # Multi-stage Alpine container with Nginx reverse proxy
 │       └── nginx.conf        # Nginx configuration routing /api/* to explain-service
 │
@@ -90,18 +97,24 @@ anvaya-prajna/
 
 ---
 
-## 3. Features & Domain Plugins
+## 3. Library vs Service Decoupling (ASI03: Identity & Privilege Abuse)
 
-- **Multi-Modal Explanation IR:** Generates text steps, mathematical expressions, diagram models (coordinates, nodes, edges), and progressive hint tiers.
-- **Interactive Explanation Player UI:** Complete React/TypeScript frontend supporting step playback, KaTeX math typesetting, SVG diagrams, reasoning graphs, and live backend exploration.
-- **5 Built-In Domain Plugins:**
-  - `MathematicsPlugin`: Equation solvers, step validation, geometry diagrams.
-  - `PhysicsPlugin`: Free-body diagrams, unit conversions, kinematic verification.
-  - `ChemistryPlugin`: Chemical reaction balancing, stoichiometric steps, molecular structures.
-  - `BiologyPlugin`: Biological processes, taxonomy graphs, pathway diagrams.
-  - `ComputerSciencePlugin`: Algorithm traces, complexity analysis, control-flow diagrams.
-- **AI Gateway Integration:** Seamless connectivity to OpenAI, Anthropic, Gemini, Mistral, and local Ollama instances via an optional LiteLLM gateway.
-- **Resilient Persistence & Caching:** PostgreSQL for persistent storage and Flyway schema migrations, with Redis for sub-millisecond IR response caching.
+To ensure strict adherence to **OWASP Agentic Top 10 (ASI03)**, the core engine has been separated into `libraries:explain-core`.
+Third-party platforms (such as enterprise LMS, Canvas, Blackboard, or custom assessment engines) can import `libraries:explain-core` directly and plug in their own IAM, OAuth2/OIDC, and RBAC schemes:
+
+```java
+@SpringBootApplication
+@EnableExplanationEngine
+public class CustomLmsApplication {
+    // Implement or bean-register custom EngineSecurityAuthorizer
+    @Bean
+    public EngineSecurityAuthorizer customAuthorizer() {
+        return new MyLmsRoleAuthorizer();
+    }
+}
+```
+
+The bundled `services:explain-service` serves as an **example reference microservice**, illustrating how to propagate caller identity (`EngineCallerPrincipal`) and enforce RBAC policies (e.g., student vs educator vs admin permissions).
 
 ---
 
@@ -142,52 +155,53 @@ npm run build
    - **Explain Service API**: [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health)
    - **LiteLLM Gateway**: [http://localhost:4000](http://localhost:4000)
 
-For detailed container management and configuration options, see [DOCKER.md](DOCKER.md).
-
 ---
 
-## 5. API Reference
-
-### Health Check
-```http
-GET /api/v1/health
-```
-```json
-{
-  "status": "UP",
-  "service": "explain-service",
-  "version": "1.0.0"
-}
-```
+## 5. API Reference (Example Reference Service)
 
 ### Generate Explanation IR
 ```http
 POST /api/v1/explanations/generate
 Content-Type: application/json
+X-User-Id: student-1
+X-User-Roles: STUDENT
 ```
 ```json
 {
   "question": {
-    "id": "q-101",
-    "prompt": "Solve for x: 2x + 6 = 14",
-    "domain": "MATHEMATICS",
-    "gradeLevel": "8",
-    "targetAudience": "middle_school"
+    "questionId": "q-101",
+    "statement": "Solve for x: 3x + 5 = 20",
+    "domain": "ALGEBRA",
+    "authoritativeAnswer": "5"
   },
-  "verifiedSolution": {
-    "finalAnswer": "x = 4",
-    "steps": [
-      "Subtract 6 from both sides: 2x = 8",
-      "Divide both sides by 2: x = 4"
-    ]
-  },
-  "options": {
-    "includeHints": true,
-    "includeMisconceptions": true,
-    "includeDiagrams": true,
-    "maxDepth": 3
+  "policy": {
+    "level": "INTERMEDIATE",
+    "showWhy": true,
+    "showVerification": true,
+    "animation": "LIGHT"
   }
 }
+```
+
+### Review Explanation (Requires ROLE_EDUCATOR or ROLE_ADMIN)
+```http
+POST /api/v1/explanations/{id}/review
+Content-Type: application/json
+X-User-Id: educator-1
+X-User-Roles: EDUCATOR
+
+{
+  "approved": true,
+  "comment": "Verified pedagogical soundness"
+}
+```
+
+### Publish Explanation (Requires ROLE_ADMIN)
+```http
+POST /api/v1/explanations/{id}/publish
+Content-Type: application/json
+X-User-Id: admin-1
+X-User-Roles: ADMIN
 ```
 
 ---

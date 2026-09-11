@@ -11,6 +11,7 @@ import ai.anvaya.prajna.ir.StepOperation;
 import ai.anvaya.prajna.ir.StepType;
 import ai.anvaya.prajna.ir.StudentLevel;
 import ai.anvaya.prajna.reasoning.ReasoningProposal;
+import ai.anvaya.prajna.security.ExampleSecurityContextFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -213,6 +214,60 @@ class ExplanationControllerIntegrationTest {
         var updated = explanationRepository.findById(entityId).orElseThrow();
         assertThat(updated.getStatus()).isEqualTo("PUBLISHED");
         assertThat(updated.getPublishedAt()).isNotNull();
+    }
+
+    @Test
+    void shouldEnforceAsi03RoleBasedAccessControl() throws Exception {
+        Question question = Question.builder()
+                .questionId("q-rbac-test")
+                .statement("Solve for x: x + 1 = 2")
+                .domain("ALGEBRA")
+                .authoritativeAnswer("1")
+                .build();
+
+        GenerateExplanationRequest request = GenerateExplanationRequest.builder()
+                .question(question)
+                .build();
+
+        mockMvc.perform(post("/api/v1/explanations/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        var entityOpt = explanationRepository.findFirstByQuestionIdOrderByVersionDesc("q-rbac-test");
+        assertThat(entityOpt).isPresent();
+        UUID entityId = entityOpt.get().getId();
+
+        // 1. Student attempting to review should be rejected with 403 Forbidden (ASI03 defense)
+        ai.anvaya.prajna.api.dto.ReviewExplanationRequest reviewRequest = ai.anvaya.prajna.api.dto.ReviewExplanationRequest.builder()
+                .approved(true)
+                .reviewerId("student-malicious")
+                .comment("Unauthorized review")
+                .build();
+
+        mockMvc.perform(post("/api/v1/explanations/" + entityId + "/review")
+                        .header(ExampleSecurityContextFilter.HEADER_USER_ID, "student-1")
+                        .header(ExampleSecurityContextFilter.HEADER_ROLES, "STUDENT")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reviewRequest)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.title").value("Forbidden (ASI03 Identity & Privilege Abuse)"));
+
+        // 2. Educator attempting to publish curriculum should be rejected with 403 Forbidden (Admin only)
+        mockMvc.perform(post("/api/v1/explanations/" + entityId + "/publish")
+                        .header(ExampleSecurityContextFilter.HEADER_USER_ID, "teacher-1")
+                        .header(ExampleSecurityContextFilter.HEADER_ROLES, "EDUCATOR")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.title").value("Forbidden (ASI03 Identity & Privilege Abuse)"));
+
+        // 3. Admin attempting to publish should succeed
+        mockMvc.perform(post("/api/v1/explanations/" + entityId + "/publish")
+                        .header(ExampleSecurityContextFilter.HEADER_USER_ID, "admin-1")
+                        .header(ExampleSecurityContextFilter.HEADER_ROLES, "ADMIN")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PUBLISHED"));
     }
 
     @Test

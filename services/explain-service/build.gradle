@@ -11,20 +11,13 @@ dependencyManagement {
 }
 
 dependencies {
-    implementation project(':libraries:explanation-ir')
-    implementation project(':libraries:math-core')
-    implementation project(':libraries:reasoning-core')
-    implementation project(':libraries:validation-core')
+    // Core Reasoning Engine Library (ASI03 decoupled)
+    implementation project(':libraries:explain-core')
 
-    // Spring Boot Starters
+    // Spring Boot Starters for Reference REST Service
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-
-    // Spring AI
-    implementation libs.spring.ai.openai
 
     // Database & Migrations
     runtimeOnly libs.postgres.driver
@@ -33,8 +26,6 @@ dependencies {
     implementation libs.flyway.postgres
 
     // OpenTelemetry & Tracing
-    implementation 'io.opentelemetry:opentelemetry-api'
-    implementation 'io.opentelemetry:opentelemetry-sdk'
     implementation 'io.micrometer:micrometer-tracing-bridge-otel'
 
     // Lombok

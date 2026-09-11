@@ -4,6 +4,7 @@ import ai.anvaya.prajna.api.dto.FeedbackRequest;
 import ai.anvaya.prajna.api.dto.GenerateExplanationRequest;
 import ai.anvaya.prajna.application.ExplanationService;
 import ai.anvaya.prajna.ir.ExplanationIR;
+import ai.anvaya.prajna.ir.ReasoningStep;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,10 +39,10 @@ public class ExplanationController {
     }
 
     @GetMapping("/{id}/steps/{stepId}")
-    public ResponseEntity<ai.anvaya.prajna.ir.ReasoningStep> getStep(
+    public ResponseEntity<ReasoningStep> getStep(
             @PathVariable UUID id, 
             @PathVariable String stepId) {
-        ai.anvaya.prajna.ir.ReasoningStep step = explanationService.getStep(id, stepId);
+        ReasoningStep step = explanationService.getStep(id, stepId);
         return ResponseEntity.ok(step);
     }
 

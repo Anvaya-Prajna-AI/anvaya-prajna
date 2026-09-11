@@ -15,11 +15,16 @@ import ai.anvaya.prajna.reasoning.ReasoningProposal;
 import ai.anvaya.prajna.repository.ExplanationFeedbackRepository;
 import ai.anvaya.prajna.repository.ExplanationRepository;
 import ai.anvaya.prajna.repository.ExplanationStepRepository;
+import ai.anvaya.prajna.security.DefaultEngineSecurityAuthorizer;
+import ai.anvaya.prajna.security.EngineSecurityAuthorizer;
+import ai.anvaya.prajna.security.EngineSecurityContext;
+import ai.anvaya.prajna.security.EngineSecurityContextHolder;
 import ai.anvaya.prajna.validation.ValidationResult;
 import ai.anvaya.prajna.validation.ValidationStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +45,7 @@ public class ExplanationService {
     private final ExplanationFeedbackRepository feedbackRepository;
     private final ExplanationCacheService cacheService;
     private final ObjectMapper objectMapper;
+    private final EngineSecurityAuthorizer authorizer;
 
     public ExplanationService(ReasoningService reasoningService,
                               ValidationService validationService,
@@ -48,7 +54,8 @@ public class ExplanationService {
                               ExplanationStepRepository stepRepository,
                               ExplanationFeedbackRepository feedbackRepository,
                               ExplanationCacheService cacheService,
-                              ObjectMapper objectMapper) {
+                              ObjectMapper objectMapper,
+                              @Autowired(required = false) EngineSecurityAuthorizer authorizer) {
         this.reasoningService = reasoningService;
         this.validationService = validationService;
         this.compilationService = compilationService;
@@ -57,6 +64,7 @@ public class ExplanationService {
         this.feedbackRepository = feedbackRepository;
         this.cacheService = cacheService;
         this.objectMapper = objectMapper;
+        this.authorizer = authorizer != null ? authorizer : new DefaultEngineSecurityAuthorizer();
     }
 
     @Transactional
@@ -65,7 +73,11 @@ public class ExplanationService {
             question.setQuestionId(UUID.randomUUID().toString());
         }
 
-        log.info("generateExplanation called for questionId: {}", question.getQuestionId());
+        // ASI03: Authorize generation against caller principal
+        EngineSecurityContext secCtx = EngineSecurityContextHolder.getContext();
+        authorizer.authorizeGenerate(question, policy, secCtx);
+
+        log.info("generateExplanation called for questionId: {} by user: {}", question.getQuestionId(), secCtx.getUserId());
 
         String cacheKey = cacheService.computeCacheKey(question.getQuestionId(), policy);
         Optional<ExplanationIR> cached = cacheService.get(cacheKey);
@@ -108,7 +120,7 @@ public class ExplanationService {
                     .language("en")
                     .schemaVersion("1.0")
                     .contentJson(contentJson)
-                    .createdBy("system")
+                    .createdBy(secCtx.getUserId() != null ? secCtx.getUserId() : "system")
                     .createdAt(Instant.now())
                     .build();
 
@@ -181,6 +193,9 @@ public class ExplanationService {
 
     @Transactional
     public ExplanationIR reviewExplanation(UUID explanationId, boolean approved, String comment) {
+        EngineSecurityContext secCtx = EngineSecurityContextHolder.getContext();
+        authorizer.authorizeReview(explanationId, approved, secCtx);
+
         ExplanationEntity entity = explanationRepository.findById(explanationId)
                 .orElseThrow(() -> new ExplanationNotFoundException("Explanation not found: " + explanationId));
 
@@ -201,6 +216,9 @@ public class ExplanationService {
 
     @Transactional
     public ExplanationIR publishExplanation(UUID explanationId) {
+        EngineSecurityContext secCtx = EngineSecurityContextHolder.getContext();
+        authorizer.authorizePublish(explanationId, secCtx);
+
         ExplanationEntity entity = explanationRepository.findById(explanationId)
                 .orElseThrow(() -> new ExplanationNotFoundException("Explanation not found: " + explanationId));
 
@@ -221,6 +239,9 @@ public class ExplanationService {
 
     @Transactional
     public void submitFeedback(UUID explanationId, UUID stepId, String userId, String feedbackType, String comment) {
+        EngineSecurityContext secCtx = EngineSecurityContextHolder.getContext();
+        authorizer.authorizeFeedback(explanationId, feedbackType, secCtx);
+
         ExplanationFeedbackEntity feedback = ExplanationFeedbackEntity.builder()
                 .id(UUID.randomUUID())
                 .explanationId(explanationId)
