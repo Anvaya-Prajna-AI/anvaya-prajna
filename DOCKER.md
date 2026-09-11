@@ -23,7 +23,40 @@ graph LR
 
 ---
 
-## 🚀 Quick Start
+## 🚀 One-Command Clean Build & Deploy (Recommended)
+
+Use the automated deploy scripts which handle Gradle clean building, Docker image compilation, and Docker Compose orchestration with automated health verification:
+
+### Bash / Linux / macOS / WSL:
+```bash
+# Clean build backend, build Docker images, and deploy
+./deploy.sh
+
+# Fast deployment (skip tests)
+./deploy.sh -x
+
+# Wipe persistent database/redis volumes (clean database slate)
+./deploy.sh -w -x
+
+# Follow live container logs after deployment
+./deploy.sh -x -l
+```
+
+### Windows PowerShell:
+```powershell
+# Clean build and deploy
+.\deploy.ps1
+
+# Fast deployment (skip tests)
+.\deploy.ps1 -SkipTests
+
+# Fresh database wipe and restart
+.\deploy.ps1 -WipeData -SkipTests
+```
+
+---
+
+## 🛠️ Manual Docker Compose Workflow
 
 ### 1. Copy Environment Variables
 ```bash
@@ -31,17 +64,22 @@ cp .env.example .env
 ```
 *(Configure any model API keys you want LiteLLM to route to, e.g. `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, or `GROQ_API_KEY`)*
 
-### 2. Build and Start All Services
+### 2. Build Backend Artifact
+```bash
+./gradlew clean :services:explain-service:bootJar
+```
+
+### 3. Build and Start All Services
 ```bash
 docker compose up --build -d
 ```
 
-### 3. Check Service Health & Status
+### 4. Check Service Health & Status
 ```bash
 docker compose ps
 ```
 
-### 4. View Logs
+### 5. View Logs
 ```bash
 # All logs
 docker compose logs -f
@@ -77,13 +115,13 @@ The **Explain Player UI** is containerized with a multi-stage Alpine build and s
 - **Interactive Multi-Modal Representations**:
   - **Step-by-step reasoning playback**: Step forward/backward, auto-play with speed controls (1x, 1.5x, 2x), and direct step selection.
   - **Mathematical notation**: Real-time KaTeX rendering of LaTeX transformations.
-  - **Visual diagrams**: SVG geometric coordinates, number-line graphs, and bar hierarchies.
+  - **Visual diagrams**: SVG geometric coordinates, number-line graphs, free-body diagrams, and reaction energy profiles.
   - **Reasoning Graph (DAG)**: Interactive dependency graph of facts, rules, inference results, and conclusions.
   - **Transformation animations**: Visual before/after diff cards showing mathematical operations.
   - **Progressive hint ladder**: Tiered scaffolding hints (Level 1, Level 2, Level 3).
   - **Verification & Misconceptions**: Authoritative verification results and common student misconception explanations.
 - **Built-in Backend Explorer**:
-  - Load pre-bundled sample explanations (Algebra, Syllogism).
+  - Load pre-bundled sample explanations (Algebra, Syllogism, Physics, Chemistry).
   - Query live explanations directly by question ID from the backend Spring Boot service via the `/api/` reverse proxy.
   - Inspect raw Explanation IR JSON payload in real time.
 

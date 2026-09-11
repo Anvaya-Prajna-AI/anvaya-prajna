@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 import { ExplanationPlayer } from './components/ExplanationPlayer';
-import { SAMPLE_ALGEBRA, SAMPLE_SYLLOGISM } from './mocks/sampleExplanations';
+import {
+  SAMPLE_ALGEBRA,
+  SAMPLE_SYLLOGISM,
+  SAMPLE_PHYSICS,
+  SAMPLE_CHEMISTRY,
+} from './mocks/sampleExplanations';
 import { ExplanationIR } from './types/ir';
 import './styles/player.css';
 
 export const App: React.FC = () => {
-  const [selectedSample, setSelectedSample] = useState<'algebra' | 'syllogism' | 'custom'>('algebra');
+  const [selectedSample, setSelectedSample] = useState<
+    'algebra' | 'syllogism' | 'physics' | 'chemistry' | 'custom'
+  >('algebra');
   const [customExplanation, setCustomExplanation] = useState<ExplanationIR | null>(null);
   const [questionIdInput, setQuestionIdInput] = useState<string>('q-alg-101');
   const [loading, setLoading] = useState<boolean>(false);
@@ -17,7 +24,19 @@ export const App: React.FC = () => {
       ? SAMPLE_ALGEBRA
       : selectedSample === 'syllogism'
       ? SAMPLE_SYLLOGISM
+      : selectedSample === 'physics'
+      ? SAMPLE_PHYSICS
+      : selectedSample === 'chemistry'
+      ? SAMPLE_CHEMISTRY
       : customExplanation || SAMPLE_ALGEBRA;
+
+  const handleSelectSample = (sample: 'algebra' | 'syllogism' | 'physics' | 'chemistry') => {
+    setSelectedSample(sample);
+    if (sample === 'algebra') setQuestionIdInput('q-alg-101');
+    else if (sample === 'syllogism') setQuestionIdInput('q-syl-202');
+    else if (sample === 'physics') setQuestionIdInput('q-phys-mechanics');
+    else if (sample === 'chemistry') setQuestionIdInput('q-chem-stoich');
+  };
 
   const handleFetchFromBackend = async () => {
     if (!questionIdInput.trim()) return;
@@ -56,10 +75,10 @@ export const App: React.FC = () => {
           gap: '12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 700, color: '#334155', fontSize: '0.9rem' }}>Sample:</span>
           <button
-            onClick={() => setSelectedSample('algebra')}
+            onClick={() => handleSelectSample('algebra')}
             style={{
               padding: '6px 12px',
               borderRadius: '6px',
@@ -73,7 +92,7 @@ export const App: React.FC = () => {
             Algebra (3x + 5 = 20)
           </button>
           <button
-            onClick={() => setSelectedSample('syllogism')}
+            onClick={() => handleSelectSample('syllogism')}
             style={{
               padding: '6px 12px',
               borderRadius: '6px',
@@ -85,6 +104,34 @@ export const App: React.FC = () => {
             }}
           >
             Syllogism (Heights)
+          </button>
+          <button
+            onClick={() => handleSelectSample('physics')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: selectedSample === 'physics' ? '2px solid #4f46e5' : '1px solid #cbd5e1',
+              background: selectedSample === 'physics' ? '#eef2ff' : '#ffffff',
+              color: selectedSample === 'physics' ? '#4f46e5' : '#475569',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Physics (FBD Mechanics)
+          </button>
+          <button
+            onClick={() => handleSelectSample('chemistry')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: selectedSample === 'chemistry' ? '2px solid #4f46e5' : '1px solid #cbd5e1',
+              background: selectedSample === 'chemistry' ? '#eef2ff' : '#ffffff',
+              color: selectedSample === 'chemistry' ? '#4f46e5' : '#475569',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Chemistry (Stoichiometry & Energy)
           </button>
         </div>
 

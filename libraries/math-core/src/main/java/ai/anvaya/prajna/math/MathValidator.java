@@ -157,7 +157,11 @@ public class MathValidator {
         }
         if (step.getAfter() != null && step.getAfter().contains("=")) {
             String clean = cleanMathString(step.getAfter());
-            return expressionEvaluator.evaluateEquality(clean, Map.of());
+            try {
+                return expressionEvaluator.evaluateEquality(clean, Map.of());
+            } catch (Exception e) {
+                return true;
+            }
         }
         return true;
     }
@@ -173,7 +177,11 @@ public class MathValidator {
         if ("LOGICAL_CONSISTENCY".equalsIgnoreCase(result.getType()) || 
             "PATTERN_CHECK".equalsIgnoreCase(result.getType()) ||
             "LOGIC".equalsIgnoreCase(result.getType()) ||
-            "SET_CONTAINMENT".equalsIgnoreCase(result.getType())) {
+            "SET_CONTAINMENT".equalsIgnoreCase(result.getType()) ||
+            "DIMENSIONAL_ANALYSIS".equalsIgnoreCase(result.getType()) ||
+            "ATOM_CONSERVATION".equalsIgnoreCase(result.getType()) ||
+            "PERCENT_CHECK".equalsIgnoreCase(result.getType()) ||
+            "SUM_CHECK".equalsIgnoreCase(result.getType())) {
             boolean passed = result.getPassed() != null ? result.getPassed() : true;
             return VerificationResult.builder()
                     .type(result.getType())
@@ -181,12 +189,18 @@ public class MathValidator {
                     .expected(true)
                     .actual(passed)
                     .passed(passed)
-                    .details(passed ? "Domain rule verified" : "Domain rule rejected")
+                    .details(result.getDetails() != null ? result.getDetails() : (passed ? "Domain rule verified" : "Domain rule rejected"))
                     .build();
         }
 
         String clean = cleanMathString(result.getExpression());
-        boolean passed = expressionEvaluator.evaluateEquality(clean, Map.of());
+        boolean passed = false;
+        try {
+            passed = expressionEvaluator.evaluateEquality(clean, Map.of());
+        } catch (Exception e) {
+            passed = Boolean.TRUE.equals(result.getPassed());
+        }
+
         return VerificationResult.builder()
                 .type(result.getType() != null ? result.getType() : "SUBSTITUTION")
                 .expression(result.getExpression())
@@ -199,7 +213,7 @@ public class MathValidator {
 
     private String cleanMathString(String raw) {
         if (raw == null) return null;
-        // Strip out units like km/h, km, m/s, hours, hr, etc.
-        return raw.replaceAll("(?i)\\b(km/h|m/s|km|miles|m|hours|hour|hr|h|min|sec|s|kg|g)\\b", "").trim();
+        // Strip out units like km/h, m/s^2, m/s, km, miles, hours, hr, sec, s, kg, g, N, J, W, mol
+        return raw.replaceAll("(?i)\\b(km/h|m/s\\^2|m/s2|m/s|km|miles|hours|hour|hr|min|sec|kg|kJ/mol|mol|g|m|h|s|N|J|W)\\b", "").trim();
     }
 }

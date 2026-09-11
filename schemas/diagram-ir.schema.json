@@ -9,7 +9,21 @@
     "id": { "type": "string" },
     "type": {
       "type": "string",
-      "enum": ["geometry", "flow", "bar", "tree", "venn", "number-line", "relationship"]
+      "enum": [
+        "geometry",
+        "flow",
+        "bar",
+        "tree",
+        "venn",
+        "number-line",
+        "relationship",
+        "free-body",
+        "circuit",
+        "kinematics-graph",
+        "reaction-energy",
+        "chemical-equation",
+        "titration-curve"
+      ]
     },
     "title": { "type": "string" },
     "objects": {
