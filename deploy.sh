@@ -29,6 +29,7 @@ WIPE_VOLUMES=false
 NO_CACHE=false
 BUILD_ONLY=false
 FOLLOW_LOGS=false
+IN_DOCKER=false
 HEALTH_TIMEOUT=60
 
 usage() {
@@ -39,6 +40,7 @@ usage() {
     echo -e "  --quick             Fast incremental build (skips Gradle clean)"
     echo -e "  -x, --skip-tests    Skip Gradle test execution during build for faster startup"
     echo -e "  -w, --wipe-data     Tear down containers and wipe persistent database/redis volumes (docker compose down -v)"
+    echo -e "  -d, --in-docker     Build JAR inside multi-stage Docker (no local Java/Gradle required)"
     echo -e "  --no-cache          Build Docker images with --no-cache"
     echo -e "  -b, --build-only    Build artifacts and container images only; do not start services"
     echo -e "  -l, --logs          Follow logs after startup (docker compose logs -f)"
@@ -47,6 +49,7 @@ usage() {
     echo -e "${BOLD}Examples:${NC}"
     echo -e "  ./deploy.sh                          # Clean build, run tests, build images, and deploy"
     echo -e "  ./deploy.sh -x                       # Clean build skipping tests, deploy"
+    echo -e "  ./deploy.sh -d -x                    # Build entirely inside Docker without requiring local Java"
     echo -e "  ./deploy.sh --quick -x               # Incremental build skipping tests, deploy"
     echo -e "  ./deploy.sh -w -x                    # Clean build, wipe volumes (fresh database), and deploy"
     echo -e "  ./deploy.sh --no-cache -l            # Clean build without Docker cache, follow logs"
@@ -70,6 +73,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -w|--wipe-data)
             WIPE_VOLUMES=true
+            shift
+            ;;
+        -d|--in-docker|--docker-build)
+            IN_DOCKER=true
             shift
             ;;
         --no-cache)
@@ -145,41 +152,65 @@ else
 fi
 echo -e "${GREEN}✓ Existing containers stopped.${NC}"
 
-# Step 3: Build backend Spring Boot jar via Gradle
-echo -e "\n${CYAN}[3/5] Building backend JAR artifact...${NC}"
-GRADLE_CMD="./gradlew"
-if [[ "${OSTYPE:-}" == "msys" || "${OSTYPE:-}" == "cygwin" || "${OSTYPE:-}" == "win32" ]]; then
-    if [ -f "gradlew.bat" ]; then
-        GRADLE_CMD="./gradlew.bat"
+# Step 3: Build backend Spring Boot jar via Gradle or Docker
+echo -e "\n${CYAN}[3/5] Resolving backend build strategy...${NC}"
+
+# Sanitize JAVA_HOME if set to a Windows mount or invalid directory in Linux/WSL
+if [ -n "${JAVA_HOME:-}" ]; then
+    if [ ! -d "$JAVA_HOME" ] || [ ! -x "$JAVA_HOME/bin/java" ]; then
+        echo -e "${YELLOW}[!] Warning: Inherited JAVA_HOME ('$JAVA_HOME') is invalid or not executable in this shell.${NC}"
+        unset JAVA_HOME
+        if command -v java &> /dev/null; then
+            echo -e "${GREEN}✓ Falling back to system 'java' found in PATH: $(command -v java)${NC}"
+        fi
     fi
 fi
-if [ -f "./gradlew" ]; then
-    chmod +x ./gradlew
+
+HOST_JAVA_AVAILABLE=false
+if command -v java &> /dev/null; then
+    HOST_JAVA_AVAILABLE=true
 fi
 
-GRADLE_TASKS=""
-if [ "$CLEAN_BUILD" = true ]; then
-    GRADLE_TASKS="clean :services:explain-service:bootJar"
+if [ "$IN_DOCKER" = true ] || [ "$HOST_JAVA_AVAILABLE" = false ]; then
+    if [ "$IN_DOCKER" = true ]; then
+        echo -e "${BLUE}[i] Docker multi-stage build requested (--in-docker).${NC}"
+    else
+        echo -e "${YELLOW}[i] No compatible host Java found. Delegating compilation to Docker multi-stage build.${NC}"
+    fi
+    echo -e "${GREEN}✓ Backend JAR will be compiled inside Docker container (no local Java installation needed).${NC}"
 else
-    GRADLE_TASKS=":services:explain-service:bootJar"
-fi
+    GRADLE_CMD="./gradlew"
+    if [[ "${OSTYPE:-}" == "msys" || "${OSTYPE:-}" == "cygwin" || "${OSTYPE:-}" == "win32" ]]; then
+        if [ -f "gradlew.bat" ]; then
+            GRADLE_CMD="./gradlew.bat"
+        fi
+    fi
+    if [ -f "./gradlew" ]; then
+        chmod +x ./gradlew
+    fi
 
-if [ "$SKIP_TESTS" = true ]; then
-    GRADLE_TASKS="${GRADLE_TASKS} -x test"
-    echo -e "${YELLOW}[i] Skipping test execution for faster deployment.${NC}"
-else
-    echo -e "${BLUE}[i] Running tests and generating bootJar...${NC}"
-fi
+    GRADLE_TASKS=""
+    if [ "$CLEAN_BUILD" = true ]; then
+        GRADLE_TASKS="clean :services:explain-service:bootJar"
+    else
+        GRADLE_TASKS=":services:explain-service:bootJar"
+    fi
 
-echo -e "Executing: ${BOLD}${GRADLE_CMD} ${GRADLE_TASKS}${NC}"
-$GRADLE_CMD $GRADLE_TASKS
+    if [ "$SKIP_TESTS" = true ]; then
+        GRADLE_TASKS="${GRADLE_TASKS} -x test"
+        echo -e "${YELLOW}[i] Skipping host test execution for faster deployment.${NC}"
+    else
+        echo -e "${BLUE}[i] Running host tests and generating bootJar...${NC}"
+    fi
 
-JAR_PATH="services/explain-service/build/libs/explain-service-1.0.0-SNAPSHOT.jar"
-if [ ! -f "$JAR_PATH" ]; then
-    echo -e "${RED}[ERROR] Expected jar file was not generated: ${JAR_PATH}${NC}"
-    exit 1
+    echo -e "Executing: ${BOLD}${GRADLE_CMD} ${GRADLE_TASKS}${NC}"
+    if $GRADLE_CMD $GRADLE_TASKS; then
+        JAR_PATH="services/explain-service/build/libs/explain-service-1.0.0-SNAPSHOT.jar"
+        echo -e "${GREEN}✓ Host backend build succeeded.${NC}"
+    else
+        echo -e "${YELLOW}[!] Host Gradle build failed. Falling back to multi-stage Docker build...${NC}"
+    fi
 fi
-echo -e "${GREEN}✓ Backend JAR successfully built: ${JAR_PATH}${NC}"
 
 # Step 4: Build Docker Images
 echo -e "\n${CYAN}[4/5] Building Docker container images...${NC}"

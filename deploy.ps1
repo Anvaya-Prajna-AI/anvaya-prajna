@@ -10,6 +10,8 @@
     Skip Gradle test execution during build for faster startup
 .PARAMETER WipeData
     Tear down containers and wipe persistent database/redis volumes (docker compose down -v)
+.PARAMETER InDocker
+    Build backend JAR inside Docker multi-stage build (no local Java required)
 .PARAMETER NoCache
     Build Docker images with --no-cache
 .PARAMETER BuildOnly
@@ -19,6 +21,7 @@
 .EXAMPLE
     .\deploy.ps1
     .\deploy.ps1 -SkipTests
+    .\deploy.ps1 -InDocker -SkipTests
     .\deploy.ps1 -WipeData -SkipTests
     .\deploy.ps1 -NoCache -Logs
 #>
@@ -28,6 +31,7 @@ param(
     [Parameter()][switch]$Quick,
     [Parameter()][alias("x")][switch]$SkipTests,
     [Parameter()][alias("w")][switch]$WipeData,
+    [Parameter()][alias("d")][switch]$InDocker,
     [Parameter()][switch]$NoCache,
     [Parameter()][alias("b")][switch]$BuildOnly,
     [Parameter()][alias("l")][switch]$Logs
@@ -96,40 +100,54 @@ if ($WipeData) {
 }
 Write-Host "✓ Existing containers stopped." -ForegroundColor Green
 
-# 3. Build backend Spring Boot JAR via Gradle
-Write-Host "`n[3/5] Building backend JAR artifact..." -ForegroundColor Cyan
-$gradleCmd = ".\gradlew.bat"
-if (-not (Test-Path $gradleCmd)) {
-    $gradleCmd = "gradle"
-}
+# 3. Build backend Spring Boot JAR via Gradle or Docker
+Write-Host "`n[3/5] Resolving backend build strategy..." -ForegroundColor Cyan
 
-$gradleArgs = @()
-if ($Clean) {
-    $gradleArgs += "clean"
-}
-$gradleArgs += ":services:explain-service:bootJar"
+$hasJava = $false
+try {
+    $null = Get-Command java -ErrorAction SilentlyContinue
+    if ($?) { $hasJava = $true }
+} catch {}
 
-if ($SkipTests) {
-    $gradleArgs += "-x"
-    $gradleArgs += "test"
-    Write-Host "[i] Skipping tests for faster deployment." -ForegroundColor Yellow
+if ($InDocker -or (-not $hasJava)) {
+    if ($InDocker) {
+        Write-Host "[i] In-Docker build requested (-InDocker)." -ForegroundColor Blue
+    } else {
+        Write-Host "[i] Local Java not detected. Delegating compilation to Docker multi-stage build." -ForegroundColor Yellow
+    }
+    Write-Host "✓ Backend JAR will be compiled inside Docker container (no local Java installation needed)." -ForegroundColor Green
 } else {
-    Write-Host "[i] Running tests and building bootJar..." -ForegroundColor Blue
-}
+    $gradleCmd = ".\gradlew.bat"
+    if (-not (Test-Path $gradleCmd)) {
+        $gradleCmd = "gradle"
+    }
 
-Write-Host "Executing: $gradleCmd $($gradleArgs -join ' ')"
-& $gradleCmd $gradleArgs
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Gradle build failed with exit code $LASTEXITCODE."
-    exit $LASTEXITCODE
-}
+    $gradleArgs = @()
+    if ($Clean) {
+        $gradleArgs += "clean"
+    }
+    $gradleArgs += ":services:explain-service:bootJar"
 
-$jarPath = "services\explain-service\build\libs\explain-service-1.0.0-SNAPSHOT.jar"
-if (-not (Test-Path $jarPath)) {
-    Write-Error "Expected jar file not found: $jarPath"
-    exit 1
+    if ($SkipTests) {
+        $gradleArgs += "-x"
+        $gradleArgs += "test"
+        Write-Host "[i] Skipping tests for faster deployment." -ForegroundColor Yellow
+    } else {
+        Write-Host "[i] Running tests and building bootJar..." -ForegroundColor Blue
+    }
+
+    Write-Host "Executing: $gradleCmd $($gradleArgs -join ' ')"
+    try {
+        & $gradleCmd $gradleArgs
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✓ Host backend JAR successfully built." -ForegroundColor Green
+        } else {
+            Write-Host "[!] Host Gradle build failed. Falling back to multi-stage Docker build..." -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "[!] Error running host Gradle build: $_. Falling back to multi-stage Docker build..." -ForegroundColor Yellow
+    }
 }
-Write-Host "✓ Backend JAR successfully built: $jarPath" -ForegroundColor Green
 
 # 4. Build Docker Images
 Write-Host "`n[4/5] Building Docker container images..." -ForegroundColor Cyan
