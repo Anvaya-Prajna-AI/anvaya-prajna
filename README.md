@@ -3,6 +3,7 @@
 [![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)]()
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.3-green.svg)]()
+[![React](https://img.shields.io/badge/React-18-blue.svg)]()
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 **An educational reasoning & explanation engine that transforms assessment questions and verified solutions into structured, student-friendly, multi-modal explanations.**
@@ -36,13 +37,20 @@ Traditional AI-generated answers suffer from hallucinations, inconsistent format
 |   - Mathematical Expressions (LaTeX/Sym)  - Interactive / Static Diagram IR            |
 |   - Multi-Level Progressive Hints         - Synchronized Animation Sequences           |
 +----------------------------------------------------------------------------------------+
+                                           |
+                                           v
++----------------------------------------------------------------------------------------+
+|                       Explain Player UI (React / Vite / Nginx)                         |
+|   - Dynamic Step Navigator & Audio Sync   - KaTeX Formula & Expression Display         |
+|   - SVG Geometry / Number Line Renderers  - Live API Backend Explorer & IR Inspector   |
++----------------------------------------------------------------------------------------+
 ```
 
 ---
 
 ## 2. Project Architecture & Modules
 
-The repository is organized as a multi-module Java 21 / Spring Boot 3 project:
+The repository is organized as a multi-module Java 21 / Spring Boot 3 backend and React TypeScript UI project:
 
 ```
 anvaya-prajna/
@@ -68,8 +76,15 @@ anvaya-prajna/
 │       ├── domain/           # 5 Domain Plugins (Math, Physics, Chemistry, Biology, Code)
 │       └── persistence/      # PostgreSQL entities, Flyway migrations, Redis cache
 │
+├── packages/
+│   └── explanation-player/   # React 18 / TypeScript / Vite student explanation player
+│       ├── src/components/   # Player, navigator, hint panel, verification & misconception cards
+│       ├── src/renderers/    # KaTeX math, SVG diagrams, reasoning DAG graph, animations
+│       ├── Dockerfile        # Multi-stage Alpine container with Nginx reverse proxy
+│       └── nginx.conf        # Nginx configuration routing /api/* to explain-service
+│
 ├── docs/                     # Detailed architecture and SRS documentation
-├── docker-compose.yml        # Multi-container orchestration (App, Postgres, Redis, LiteLLM)
+├── docker-compose.yml        # Multi-container orchestration (Player UI, App, Postgres, Redis, LiteLLM)
 └── litellm-config.yaml       # Multi-provider LLM proxy configuration
 ```
 
@@ -78,6 +93,7 @@ anvaya-prajna/
 ## 3. Features & Domain Plugins
 
 - **Multi-Modal Explanation IR:** Generates text steps, mathematical expressions, diagram models (coordinates, nodes, edges), and progressive hint tiers.
+- **Interactive Explanation Player UI:** Complete React/TypeScript frontend supporting step playback, KaTeX math typesetting, SVG diagrams, reasoning graphs, and live backend exploration.
 - **5 Built-In Domain Plugins:**
   - `MathematicsPlugin`: Equation solvers, step validation, geometry diagrams.
   - `PhysicsPlugin`: Free-body diagrams, unit conversions, kinematic verification.
@@ -93,16 +109,22 @@ anvaya-prajna/
 
 ### Prerequisites
 - **JDK 21** or later
+- **Node.js 20+** (for frontend development)
 - **Docker & Docker Compose** (for containerized setup)
 
 ### Building the Project
 
 ```bash
-# Build all libraries and services
+# Build all backend libraries and services
 ./gradlew build
 
 # Run unit and integration tests across all modules
 ./gradlew test
+
+# Build the Explanation Player UI
+cd packages/explanation-player
+npm ci
+npm run build
 ```
 
 ### Running Locally with Docker Compose
@@ -111,14 +133,14 @@ anvaya-prajna/
    ```bash
    cp .env.example .env
    ```
-2. Start all services (Postgres, Redis, LiteLLM, and Explain Service):
+2. Start all services (Explain Player UI, Explain Service, Postgres, Redis, and LiteLLM):
    ```bash
-   docker compose up -d
+   docker compose up --build -d
    ```
-3. Check service health:
-   ```bash
-   curl http://localhost:8080/api/v1/health
-   ```
+3. Access the services:
+   - **Explain Player UI**: [http://localhost:3000](http://localhost:3000)
+   - **Explain Service API**: [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health)
+   - **LiteLLM Gateway**: [http://localhost:4000](http://localhost:4000)
 
 For detailed container management and configuration options, see [DOCKER.md](DOCKER.md).
 
