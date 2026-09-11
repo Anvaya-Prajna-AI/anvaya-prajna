@@ -458,6 +458,11 @@
   font-size: 0.95rem;
 }
 
+.ep-anim-box-label {
+  display: inline-block;
+  margin-right: 6px;
+}
+
 .ep-anim-before {
   background: #ffffff;
   border: 1px solid #e2e8f0;

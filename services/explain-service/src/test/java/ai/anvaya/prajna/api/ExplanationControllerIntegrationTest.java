@@ -118,6 +118,52 @@ class ExplanationControllerIntegrationTest {
     }
 
     @Test
+    void shouldGeneratePhysicsExplanationWithFreeBodyDiagram() throws Exception {
+        Question question = Question.builder()
+                .questionId("q-phys-mechanics")
+                .statement("A 10 kg block is pulled with a force of 50 N on a frictionless surface. What is its acceleration?")
+                .domain("PHYSICS")
+                .authoritativeAnswer("5")
+                .build();
+
+        GenerateExplanationRequest request = GenerateExplanationRequest.builder()
+                .question(question)
+                .build();
+
+        mockMvc.perform(post("/api/v1/explanations/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questionId").value("q-phys-mechanics"))
+                .andExpect(jsonPath("$.diagrams[0].type").value("free-body"))
+                .andExpect(jsonPath("$.diagrams[0].title").value("Free-Body Diagram (FBD)"))
+                .andExpect(jsonPath("$.verification.passed").value(true));
+    }
+
+    @Test
+    void shouldGenerateChemistryExplanationWithReactionEnergyProfile() throws Exception {
+        Question question = Question.builder()
+                .questionId("q-chem-stoich")
+                .statement("Balance H2 + O2 -> H2O and find grams of water produced from 4 g of H2.")
+                .domain("CHEMISTRY")
+                .authoritativeAnswer("35.7")
+                .build();
+
+        GenerateExplanationRequest request = GenerateExplanationRequest.builder()
+                .question(question)
+                .build();
+
+        mockMvc.perform(post("/api/v1/explanations/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questionId").value("q-chem-stoich"))
+                .andExpect(jsonPath("$.diagrams[0].type").value("reaction-energy"))
+                .andExpect(jsonPath("$.steps[2].type").value("TRANSFORM"))
+                .andExpect(jsonPath("$.verification.passed").value(true));
+    }
+
+    @Test
     void shouldValidateProposalDirectly() throws Exception {
         ReasoningStep step = ReasoningStep.builder()
                 .id("s1")
