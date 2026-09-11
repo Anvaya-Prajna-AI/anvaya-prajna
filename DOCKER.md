@@ -1,6 +1,6 @@
 # Anvaya-Prajna-AI — Local Docker Environment
 
-This directory contains the Docker configuration to build and run the complete Anvaya-Prajna backend ecosystem locally with Docker Desktop.
+This directory contains the Docker configuration to build and run the complete Anvaya-Prajna ecosystem locally with Docker Desktop.
 
 ---
 
@@ -8,7 +8,9 @@ This directory contains the Docker configuration to build and run the complete A
 
 ```mermaid
 graph LR
-    Client["Client / Web / Mobile"] -->|"HTTP / REST (8080)"| ExplainService["Explain Service (Spring Boot 3.4.2)"]
+    User["Student / Educator Browser"] -->|"HTTP (3000)"| ExplainPlayer["Explain Player UI (React / Nginx)"]
+    ExplainPlayer -->|"Reverse Proxy /api/*"| ExplainService["Explain Service (Spring Boot 3.4.2)"]
+    User -.->|"Direct API (8080)"| ExplainService
     ExplainService -->|"JPA / Flyway (5432)"| Postgres["PostgreSQL 16"]
     ExplainService -->|"Cache / Redis (6379)"| Redis["Redis 7"]
     ExplainService -->|"Spring AI OpenAI API (4000)"| LiteLLM["LiteLLM Proxy (Router & Fallback)"]
@@ -44,7 +46,10 @@ docker compose ps
 # All logs
 docker compose logs -f
 
-# Explain service logs only
+# Explain Player UI logs only
+docker compose logs -f explain-player
+
+# Explain service backend logs only
 docker compose logs -f explain-service
 
 # LiteLLM proxy logs only
@@ -57,10 +62,30 @@ docker compose logs -f litellm
 
 | Service | Port | Healthcheck / Description |
 |---|---|---|
-| **Explain Service** | `http://localhost:8080` | `http://localhost:8080/actuator/health` |
-| **LiteLLM Unified AI Gateway** | `http://localhost:4000` | `http://localhost:4000/health/liveliness` |
-| **PostgreSQL 16** | `localhost:5432` | `pg_isready -U anvaya -d anvayadb` |
-| **Redis 7** | `localhost:6379` | `redis-cli ping` |
+| **Explain Player UI** | `http://localhost:3000` | `http://localhost:3000/health` — Interactive student player & IR explorer |
+| **Explain Service** | `http://localhost:8080` | `http://localhost:8080/actuator/health` — REST microservice & IR compiler |
+| **LiteLLM Unified AI Gateway** | `http://localhost:4000` | `http://localhost:4000/health/liveliness` — Multi-provider LLM proxy |
+| **PostgreSQL 16** | `localhost:5432` | `pg_isready -U anvaya -d anvayadb` — Persistent explanation storage |
+| **Redis 7** | `localhost:6379` | `redis-cli ping` — Explanation IR sub-millisecond cache |
+
+---
+
+## 🖥️ Explain Player UI (`explain-player`)
+
+The **Explain Player UI** is containerized with a multi-stage Alpine build and served via high-performance **Nginx**:
+
+- **Interactive Multi-Modal Representations**:
+  - **Step-by-step reasoning playback**: Step forward/backward, auto-play with speed controls (1x, 1.5x, 2x), and direct step selection.
+  - **Mathematical notation**: Real-time KaTeX rendering of LaTeX transformations.
+  - **Visual diagrams**: SVG geometric coordinates, number-line graphs, and bar hierarchies.
+  - **Reasoning Graph (DAG)**: Interactive dependency graph of facts, rules, inference results, and conclusions.
+  - **Transformation animations**: Visual before/after diff cards showing mathematical operations.
+  - **Progressive hint ladder**: Tiered scaffolding hints (Level 1, Level 2, Level 3).
+  - **Verification & Misconceptions**: Authoritative verification results and common student misconception explanations.
+- **Built-in Backend Explorer**:
+  - Load pre-bundled sample explanations (Algebra, Syllogism).
+  - Query live explanations directly by question ID from the backend Spring Boot service via the `/api/` reverse proxy.
+  - Inspect raw Explanation IR JSON payload in real time.
 
 ---
 

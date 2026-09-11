@@ -1428,7 +1428,7 @@ attach validation metadata, select renderers, create animation timeline.
 anvaya-prajna/
 |
 +-- services/
-|   +-- explain-service/          — Spring Boot explanation engine
+|   +-- explain-service/          — Spring Boot explanation engine & IR compiler
 |
 +-- libraries/
 |   +-- explanation-ir/           — IR domain model (Java)
@@ -1436,9 +1436,8 @@ anvaya-prajna/
 |   +-- math-core/                — Math AST, validation, Math.js bridge
 |   +-- validation-core/          — Validation pipeline
 |
-+-- frontend/
-|   +-- explanation-player/       — React student explanation player
-|   +-- explanation-authoring/    — Teacher/author editor
++-- packages/
+|   +-- explanation-player/       — React student explanation player UI (Dockerized as explain-player)
 |
 +-- schemas/
 |   +-- explanation-ir.schema.json
@@ -1448,15 +1447,11 @@ anvaya-prajna/
 |   +-- math-expression.schema.json
 |
 +-- docs/
-|   +-- requirements.md
-|   +-- architecture.md
-|   +-- ir-spec.md
-|   +-- plugin-guide.md
+|   +-- Anvaya_Prajna_AI_Requirements_and_Design.md
 |
-+-- examples/
-|   +-- algebra/
-|   +-- logical-reasoning/
-|   +-- geometry/
++-- docker-compose.yml            — Multi-container local orchestration (explain-player, explain-service, litellm, postgres, redis)
++-- Dockerfile                    — explain-service backend container
++-- litellm-config.yaml           — LiteLLM AI gateway proxy configuration
 ```
 
 > [!IMPORTANT]
@@ -1637,7 +1632,64 @@ React + TypeScript         Docker / Kubernetes / GitHub Actions CI/CD
 
 ------------------------------------------------------------------------
 
-## 50. Recommended Initial Implementation
+## 50. Containerized Architecture & Deployment Topology (Docker Compose)
+
+Anvaya-Prajna-AI provides a turnkey containerized deployment orchestrated via `docker-compose.yml` for unified local development, testing, and production deployment.
+
+### 50.1 Multi-Container Topology
+
+All containers are connected through an internal bridge network (`anvaya-net`).
+
+```text
++-----------------------------------------------------------------------------------------+
+|                                  Student / User Browser                                 |
++-----------------------------------------------------------------------------------------+
+        | (Port 3000)                                                  : (Port 8080)
+        v                                                              v
++-----------------------------+      Reverse Proxy (/api/*)    +--------------------------+
+|       explain-player        | -----------------------------> |     explain-service      |
+| (React 18 + Vite + Nginx)   |                                |   (Spring Boot 3 / J21)  |
++-----------------------------+                                +--------------------------+
+                                                                     |            |
+                                      +------------------------------+            |
+                                      | (Port 4000)                               | (Port 5432 / 6379)
+                                      v                                           v
+                         +--------------------------+                 +-----------------------+
+                         |         litellm          |                 | postgres:16  redis:7  |
+                         |  (Unified AI Gateway)    |                 | (Persistence & Cache) |
+                         +--------------------------+                 +-----------------------+
+                                      |
+                     +----------------+----------------+
+                     |                |                |
+                     v                v                v
+                 OpenAI           Anthropic      Local Ollama
+```
+
+### 50.2 Container Service Inventory
+
+| Service Name | Container Name | Technology | Internal Port | Host Port | Purpose & Capabilities |
+|---|---|---|---|---|---|
+| **`explain-player`** | `anvaya-explain-player` | React 18, Vite, KaTeX, Nginx Alpine | 80 | `3000` | **Interactive Explanation Player UI**<br>• Student UI for multi-modal explanation playback<br>• Step navigator with auto-play & variable speed controls (1x, 1.5x, 2x)<br>• LaTeX mathematical formula rendering with KaTeX<br>• SVG diagram viewport (geometry, number lines, comparison bars)<br>• Reasoning DAG graph visualization with node dependency chains<br>• Progressive hint disclosure (Levels 1–3) and misconception cards<br>• Live question ID API query explorer and raw IR JSON viewer<br>• Nginx reverse proxy routing `/api/*` to `explain-service:8080` with runtime dynamic DNS |
+| **`explain-service`** | `anvaya-explain-service` | Java 21, Spring Boot 3.4.2, Spring AI | 8080 | `8080` | **Core Reasoning & Explanation Microservice**<br>• Reasoning proposal compilation & schema enforcement<br>• 5 pluggable domain engines (Math, Physics, Chemistry, Biology, CS)<br>• PostgreSQL persistence with Flyway migrations & Redis cache |
+| **`litellm`** | `anvaya-litellm` | LiteLLM Proxy, Python 3 Alpine | 4000 | `4000` | **Unified AI Gateway**<br>• Standard OpenAI-compatible routing with intelligent fallbacks<br>• Connects to OpenAI, Claude, Gemini, Groq, and local Ollama |
+| **`postgres`** | `anvaya-postgres` | PostgreSQL 16 Alpine | 5432 | `5432` | **Relational Data Store**<br>• Stores authoritative explanations, question definitions, and evaluation logs |
+| **`redis`** | `anvaya-redis` | Redis 7 Alpine | 6379 | `6379` | **High-Performance In-Memory Cache**<br>• Caches pre-compiled Explanation IR for sub-millisecond retrieval |
+
+### 50.3 Explain Player UI Architecture & Nginx Reverse Proxy
+
+The `explain-player` container is designed as a standalone, zero-dependency distribution:
+1. **Multi-Stage Build Pipeline**:
+   - **Stage 1 (`build`)**: Compiles TypeScript and builds the Vite SPA into static assets in `dist-app/`.
+   - **Stage 2 (`runtime`)**: Minimal Alpine Nginx image (~25MB) serving the static bundle.
+2. **Reverse Proxying & CORS Elimination**:
+   - Nginx intercepts all `/api/` traffic and forwards it internally to `http://explain-service:8080/api/` using Docker's embedded DNS (`127.0.0.11`).
+   - Browser clients make all requests to a single origin (`http://localhost:3000`), completely bypassing browser Cross-Origin Resource Sharing (CORS) restrictions while keeping backend endpoints accessible directly on port 8080.
+3. **SPA Fallback Routing**:
+   - Supports client-side routing fallback via `try_files $uri $uri/ /index.html;`.
+
+------------------------------------------------------------------------
+
+## 51. Recommended Initial Implementation
 
 Build this **vertical slice** first:
 
@@ -1661,7 +1713,7 @@ Only after the IR proves stable should additional renderers be introduced.
 
 ------------------------------------------------------------------------
 
-## 51. Key Product Decision
+## 52. Key Product Decision
 
 > [!TIP]
 > **Anvaya-Prajna-AI is not an LLM answer generator.  
@@ -1698,7 +1750,7 @@ content model.
 
 ------------------------------------------------------------------------
 
-## 52. Immediate Engineering Deliverables
+## 53. Immediate Engineering Deliverables
 
 | # | Deliverable | Contents |
 |---|---|---|
@@ -1712,7 +1764,7 @@ content model.
 
 ------------------------------------------------------------------------
 
-## 53. Conclusion
+## 54. Conclusion
 
 There is no need to build new mathematical rendering, geometry, graph,
 or animation frameworks. The strongest architecture combines mature
