@@ -46,12 +46,18 @@ public class ExplanationEntity {
     @Column(name = "created_by")
     private String createdBy;
 
+    @Column(name = "reviewed_by")
+    private String reviewedBy;
+
     @Column(name = "created_at")
     @Builder.Default
     private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;
 
     @Column(name = "published_at")
     private Instant publishedAt;

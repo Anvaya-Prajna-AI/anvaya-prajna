@@ -1,0 +1,40 @@
+name: 🐛 Bug Report
+description: File a bug report to help us fix issues
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: input
+    id: summary
+    attributes:
+      label: Bug Summary
+      description: A concise description of what the bug is.
+      placeholder: e.g. Division by zero error in algebra equation solver
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps explaining how to reproduce the behavior.
+      placeholder: |
+        1. Send POST request to /api/v1/explanations/generate with payload ...
+        2. Inspect output IR
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment & Version
+      description: Provide OS, Java version, and Anvaya-Prajna version.
+      placeholder: Java 21 / Spring Boot 3.3 / macOS Sonoma

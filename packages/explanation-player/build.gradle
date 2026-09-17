@@ -1,0 +1,28 @@
+plugins {
+    alias(libs.plugins.node.gradle)
+}
+
+node {
+    version = '20.17.0'
+    download = false
+    nodeProjectDir = file("${projectDir}")
+}
+
+task npmInstallDeps(type: NpmTask) {
+    args = ['install']
+}
+
+task buildPlayer(type: NpmTask) {
+    dependsOn npmInstallDeps
+    args = ['run', 'build']
+}
+
+task testPlayer(type: NpmTask) {
+    dependsOn npmInstallDeps
+    args = ['run', 'test']
+}
+
+task lintPlayer(type: NpmTask) {
+    dependsOn npmInstallDeps
+    args = ['run', 'lint']
+}

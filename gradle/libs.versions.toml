@@ -11,10 +11,19 @@ flyway = "10.20.0"
 postgres = "42.7.4"
 testcontainers = "1.20.4"
 opentelemetry = "1.45.0"
+junit = "5.11.4"
+assertj = "3.27.2"
+springdoc = "2.8.3"
+logstash-logback = "8.0"
+resilience4j = "2.2.0"
+axion-release = "1.18.16"
+node-gradle = "7.1.0"
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+axion-release = { id = "pl.allegro.tech.build.axion-release", version.ref = "axion-release" }
+node-gradle = { id = "com.github.node-gradle.node", version.ref = "node-gradle" }
 
 [libraries]
 # Jackson
@@ -38,10 +47,22 @@ spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref =
 spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai-spring-boot-starter" }
 spring-ai-ollama = { module = "org.springframework.ai:spring-ai-ollama-spring-boot-starter" }
 
-# OpenTelemetry
+# OpenTelemetry & Observability
 otel-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry" }
 otel-sdk = { module = "io.opentelemetry:opentelemetry-sdk", version.ref = "opentelemetry" }
+otel-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp", version.ref = "opentelemetry" }
+micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
+logstash-logback = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstash-logback" }
+
+# Resilience & Rate Limiting
+resilience4j-ratelimiter = { module = "io.github.resilience4j:resilience4j-ratelimiter", version.ref = "resilience4j" }
+resilience4j-spring-boot = { module = "io.github.resilience4j:resilience4j-spring-boot3", version.ref = "resilience4j" }
+
+# OpenAPI & Swagger
+springdoc-openapi = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 
 # Testing
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 testcontainers-junit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }

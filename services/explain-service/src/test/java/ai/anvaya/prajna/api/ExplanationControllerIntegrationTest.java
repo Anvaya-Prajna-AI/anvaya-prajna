@@ -42,6 +42,9 @@ class ExplanationControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private ai.anvaya.prajna.repository.ExplanationRepository explanationRepository;
+
     @Test
     void shouldGenerateAlgebraExplanationSuccessfully() throws Exception {
         Question question = Question.builder()
@@ -93,6 +96,37 @@ class ExplanationControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/explanations/q-alg-101/why").param("stepId", "s1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.text").isNotEmpty());
+    }
+
+    @Test
+    void shouldRejectInvalidGenerateRequest() throws Exception {
+        // Missing required question field
+        mockMvc.perform(post("/api/v1/explanations/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnNotFoundForNonExistentEntities() throws Exception {
+        mockMvc.perform(get("/api/v1/explanations/non-existent-question-id"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/explanations/non-existent-question-id/hints"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/explanations/non-existent-question-id/why").param("stepId", "s1"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldExposeOpenApiDocsAndActuatorHealth() throws Exception {
+        mockMvc.perform(get("/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.openapi").exists());
+
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -189,9 +223,6 @@ class ExplanationControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PASSED"));
     }
-
-    @Autowired
-    private ai.anvaya.prajna.repository.ExplanationRepository explanationRepository;
 
     @Test
     void shouldSubmitFeedback() throws Exception {
