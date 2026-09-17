@@ -16,7 +16,7 @@ assertj = "3.27.2"
 springdoc = "2.8.3"
 logstash-logback = "8.0"
 resilience4j = "2.2.0"
-axion-release = "1.18.16"
+axion-release = "1.21.3"
 node-gradle = "7.1.0"
 
 [plugins]
