@@ -2,8 +2,25 @@ name: Release Pipeline
 
 on:
   push:
+    branches:
+      - 'main'
+      - 'default'
+      - '*ver_[0-9]+.[0-9]+.[0-9]+*'
+      - '**ver_*'
+      - '*ver_*'
+      - '**/ver_*'
     tags:
       - 'v*'
+      - 'ver_*'
+  pull_request:
+    branches:
+      - 'main'
+      - 'default'
+      - '*ver_[0-9]+.[0-9]+.[0-9]+*'
+      - '**ver_*'
+      - '*ver_*'
+      - '**/ver_*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -32,6 +49,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Publish Libraries to GitHub Packages & Maven Central
+        if: github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
@@ -41,6 +59,10 @@ jobs:
           SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew publish --no-daemon
+
+      - name: Dry Run Build & Jar Verification for PRs
+        if: github.event_name == 'pull_request'
+        run: ./gradlew assemble check --no-daemon
 
   publish-frontend:
     name: Publish Frontend Package (@anvaya-prajna/explanation-player)
@@ -66,6 +88,7 @@ jobs:
         run: npm run build:lib
 
       - name: Publish Package to GitHub NPM Registry
+        if: github.event_name != 'pull_request'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm publish --access public
@@ -77,14 +100,29 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Extract Tag Version
+      - name: Extract Release Version
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            RAW_TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${RAW_TAG#v}"
+            VERSION="${VERSION#ver_}"
+          elif [[ "${{ github.ref_name }}" =~ ver_([0-9]+\.[0-9]+\.[0-9]+.*) ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+          elif [[ "${{ github.ref_name }}" == "main" || "${{ github.ref_name }}" == "default" ]]; then
+            VERSION="latest"
+          else
+            VERSION="${{ github.ref_name }}"
+          fi
+          echo "Extracted Version: $VERSION"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -96,7 +134,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/explain-service:latest
             ghcr.io/${{ github.repository_owner }}/explain-service:${{ steps.get_version.outputs.VERSION }}
@@ -106,7 +144,7 @@ jobs:
         with:
           context: ./packages/explanation-player
           file: ./packages/explanation-player/Dockerfile
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/explain-player:latest
             ghcr.io/${{ github.repository_owner }}/explain-player:${{ steps.get_version.outputs.VERSION }}
@@ -114,14 +152,34 @@ jobs:
   github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     needs: [publish-libraries, publish-frontend, publish-docker]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract Tag / Release Version
+        id: release_meta
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          elif [[ "${{ github.ref_name }}" =~ ver_([0-9]+\.[0-9]+\.[0-9]+.*) ]]; then
+            TAG_NAME="v${BASH_REMATCH[1]}"
+          elif [[ "${{ github.ref_name }}" == "main" || "${{ github.ref_name }}" == "default" ]]; then
+            TAG_NAME="v$(date +'%Y.%m.%d-%H%M%S')"
+          else
+            TAG_NAME="v-${{ github.ref_name }}"
+          fi
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.release_meta.outputs.TAG_NAME }}
+          name: Release ${{ steps.release_meta.outputs.TAG_NAME }}
           generate_release_notes: true
           draft: false
           prerelease: false
