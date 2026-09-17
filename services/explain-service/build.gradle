@@ -4,6 +4,10 @@ plugins {
     alias(libs.plugins.spring.dependency.management)
 }
 
+bootJar {
+    archiveFileName = 'explain-service.jar'
+}
+
 dependencyManagement {
     imports {
         mavenBom "org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}"
@@ -18,6 +22,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 
     // Database & Migrations
     runtimeOnly libs.postgres.driver
@@ -25,8 +31,18 @@ dependencies {
     implementation libs.flyway.core
     implementation libs.flyway.postgres
 
-    // OpenTelemetry & Tracing
+    // OpenTelemetry, Metrics & Structured Logging
     implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    implementation libs.otel.exporter.otlp
+    implementation libs.micrometer.prometheus
+    implementation libs.logstash.logback
+
+    // Rate Limiting & Resilience
+    implementation libs.resilience4j.ratelimiter
+    implementation libs.resilience4j.spring.boot
+
+    // OpenAPI & Swagger Documentation
+    implementation libs.springdoc.openapi
 
     // Lombok
     compileOnly libs.lombok
@@ -37,6 +53,9 @@ dependencies {
 
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
     testImplementation libs.testcontainers.postgresql
     testImplementation libs.testcontainers.junit
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
 }

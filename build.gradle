@@ -1,11 +1,20 @@
 plugins {
     alias(libs.plugins.spring.boot) apply false
     alias(libs.plugins.spring.dependency.management) apply false
+    alias(libs.plugins.axion.release)
+    id 'jacoco'
+}
+
+scmVersion {
+    tag {
+        prefix = 'v'
+    }
+    versionCreator 'versionWithBranch'
 }
 
 allprojects {
     group = 'ai.anvaya.prajna'
-    version = '1.0.0-SNAPSHOT'
+    version = scmVersion.version
 
     repositories {
         mavenCentral()
@@ -15,23 +24,157 @@ allprojects {
 }
 
 subprojects {
-    apply plugin: 'java'
+    if (subprojects.isEmpty()) {
+        apply plugin: 'java'
+        apply plugin: 'jacoco'
+
+        java {
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(21)
+            }
+        }
+
+        tasks.withType(JavaCompile).configureEach {
+            options.encoding = 'UTF-8'
+            options.compilerArgs.addAll(['-parameters'])
+        }
+
+        tasks.withType(Javadoc).configureEach {
+            options.encoding = 'UTF-8'
+            options.addStringOption('Xdoclint:none', '-quiet')
+            if (JavaVersion.current().isJava9Compatible()) {
+                options.addBooleanOption('html5', true)
+            }
+        }
+
+        tasks.withType(Test).configureEach {
+            useJUnitPlatform()
+            testLogging {
+                events 'passed', 'skipped', 'failed'
+            }
+            finalizedBy jacocoTestReport
+        }
+
+        jacoco {
+            toolVersion = "0.8.12"
+        }
+
+        jacocoTestReport {
+            dependsOn test
+            reports {
+                xml.required = true
+                html.required = true
+                csv.required = false
+            }
+        }
+
+        jacocoTestCoverageVerification {
+            dependsOn jacocoTestReport
+            violationRules {
+                rule {
+                    limit {
+                        minimum = 0.70
+                    }
+                }
+            }
+        }
+
+        // Include verification in check task
+        check.dependsOn jacocoTestCoverageVerification
+    }
+}
+
+// Aggregated JaCoCo report for multi-module project
+task codeCoverageReport(type: JacocoReport) {
+    def javaProjects = subprojects.findAll { it.plugins.hasPlugin('java') && it.subprojects.isEmpty() }
+
+    dependsOn(javaProjects.collect { p -> p.tasks.matching { t -> t.name == 'jacocoTestReport' || t.name == 'test' } })
+
+    executionData(files(javaProjects.collect { p ->
+        fileTree(dir: "${p.buildDir}/jacoco", include: "*.exec")
+    }))
+
+    sourceDirectories.setFrom(files(javaProjects.sourceSets.main.allSource.srcDirs))
+    classDirectories.setFrom(files(javaProjects.sourceSets.main.output))
+
+    reports {
+        xml.required = true
+        xml.outputLocation = file("${buildDir}/reports/jacoco/report.xml")
+        html.required = true
+        html.outputLocation = file("${buildDir}/reports/jacoco/html")
+    }
+}
+
+// Maven Publishing configuration for all 5 libraries (Issue #7)
+configure(subprojects.findAll { it.path.startsWith(':libraries:') && it.subprojects.isEmpty() }) {
+    apply plugin: 'maven-publish'
+    apply plugin: 'signing'
 
     java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
+        withJavadocJar()
+        withSourcesJar()
+    }
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+                pom {
+                    name = project.name
+                    description = 'Anvaya-Prajna AI — Educational Reasoning Engine Library'
+                    url = 'https://github.com/Anvaya-Prajna-AI/anvaya-prajna'
+                    licenses {
+                        license {
+                            name = 'Apache License, Version 2.0'
+                            url = 'https://www.apache.org/licenses/LICENSE-2.0'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = 'anvaya-prajna'
+                            name = 'Anvaya-Prajna Team'
+                            email = 'dev@anvaya.ai'
+                        }
+                    }
+                    scm {
+                        connection = 'scm:git:git://github.com/Anvaya-Prajna-AI/anvaya-prajna.git'
+                        developerConnection = 'scm:git:ssh://github.com/Anvaya-Prajna-AI/anvaya-prajna.git'
+                        url = 'https://github.com/Anvaya-Prajna-AI/anvaya-prajna'
+                    }
+                }
+            }
+        }
+        repositories {
+            maven {
+                name = 'GitHubPackages'
+                url = uri('https://maven.pkg.github.com/Anvaya-Prajna-AI/anvaya-prajna')
+                credentials {
+                    username = System.getenv('GITHUB_ACTOR') ?: 'anvaya-prajna'
+                    password = System.getenv('GITHUB_TOKEN') ?: ''
+                }
+            }
+            maven {
+                name = 'SonatypeOSSRH'
+                url = version.toString().endsWith('SNAPSHOT')
+                        ? uri('https://s01.oss.sonatype.org/content/repositories/snapshots/')
+                        : uri('https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/')
+                credentials {
+                    username = System.getenv('OSSRH_USERNAME') ?: ''
+                    password = System.getenv('OSSRH_TOKEN') ?: ''
+                }
+            }
         }
     }
 
-    tasks.withType(JavaCompile).configureEach {
-        options.encoding = 'UTF-8'
-        options.compilerArgs.addAll(['-parameters'])
-    }
-
-    tasks.withType(Test).configureEach {
-        useJUnitPlatform()
-        testLogging {
-            events 'passed', 'skipped', 'failed'
+    signing {
+        required {
+            !version.toString().endsWith("SNAPSHOT") && gradle.taskGraph.hasTask("publish") && System.getenv('SIGNING_KEY') != null
+        }
+        def signingKey = System.getenv('SIGNING_KEY')
+        def signingPassword = System.getenv('SIGNING_PASSWORD')
+        if (signingKey != null) {
+            useInMemoryPgpKeys(System.getenv('SIGNING_KEY_ID'), signingKey, signingPassword)
+            sign publishing.publications.mavenJava
         }
     }
 }

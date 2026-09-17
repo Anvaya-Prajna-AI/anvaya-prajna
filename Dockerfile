@@ -35,7 +35,7 @@ RUN apk add --no-cache curl && \
     addgroup -S anvaya && adduser -S anvaya -G anvaya
 
 # Copy the built jar artifact from builder stage
-COPY --from=builder /workspace/services/explain-service/build/libs/explain-service-1.0.0-SNAPSHOT.jar /app/explain-service.jar
+COPY --from=builder /workspace/services/explain-service/build/libs/*.jar /app/explain-service.jar
 
 USER anvaya:anvaya
 

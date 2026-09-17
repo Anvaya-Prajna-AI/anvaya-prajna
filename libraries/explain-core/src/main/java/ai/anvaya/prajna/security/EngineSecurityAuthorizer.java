@@ -6,7 +6,7 @@ import ai.anvaya.prajna.ir.Question;
 import java.util.UUID;
 
 /**
- * Security policy & RBAC authorizer interface (ASI03).
+ * Security policy and RBAC authorizer interface (ASI03).
  * Consumers can implement this interface or provide a Spring Bean to customize authorization rules.
  */
 public interface EngineSecurityAuthorizer {

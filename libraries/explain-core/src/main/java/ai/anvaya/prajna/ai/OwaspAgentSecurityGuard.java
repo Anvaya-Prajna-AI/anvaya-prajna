@@ -14,12 +14,12 @@ import java.util.regex.Pattern;
 /**
  * OWASP Top 10 for LLMs and AI Agents Security Guard.
  * Implements defenses for:
- * - LLM01: Prompt Injection (Direct & Indirect jailbreak pattern detection & isolation)
- * - LLM02: Sensitive Information Disclosure (PII & API token scrubbing)
- * - LLM03: Supply Chain Vulnerabilities (Verified Bedrock Nova & Gemini model whitelisting)
+ * - LLM01: Prompt Injection (Direct and Indirect jailbreak pattern detection and isolation)
+ * - LLM02: Sensitive Information Disclosure (PII and API token scrubbing)
+ * - LLM03: Supply Chain Vulnerabilities (Verified Bedrock Nova and Gemini model whitelisting)
  * - LLM05: Improper Output Handling (Markdown stripping, XSS script neutralization)
- * - LLM07: System Prompt Leakage (Reflection & instruction leak detection)
- * - LLM08 / LLM10: Context Exhaustion & Denial of Service (Input length & token bounding)
+ * - LLM07: System Prompt Leakage (Reflection and instruction leak detection)
+ * - LLM08 / LLM10: Context Exhaustion and Denial of Service (Input length and token bounding)
  */
 @Component
 public class OwaspAgentSecurityGuard {
@@ -62,7 +62,7 @@ public class OwaspAgentSecurityGuard {
 
     // PII and Credential Scrubbing Patterns (LLM02)
     private static final Pattern EMAIL_PATTERN = Pattern.compile("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
-    private static final Pattern PHONE_PATTERN = Pattern.compile("(?<!\\d)(?:\\+?\\d{1,3}[-.\s]?)?\\(?\\d{3}\\)?[-.\s]?\\d{3}[-.\s]?\\d{4}(?!\\d)");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("(?<!\\d)(?:\\+?\\d{1,3}[-.\\s]?)?\\(?\\d{3}\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}(?!\\d)");
     private static final Pattern SSN_PATTERN = Pattern.compile("\\b\\d{3}-\\d{2}-\\d{4}\\b");
     private static final Pattern AWS_KEY_PATTERN = Pattern.compile("\\bAKIA[0-9A-Z]{16}\\b");
     private static final Pattern BEARER_TOKEN_PATTERN = Pattern.compile("(?i)\\bBearer\\s+[A-Za-z0-9-_=]+\\.[A-Za-z0-9-_=]+\\.?[A-Za-z0-9-_.+/=]*\\b");
@@ -87,6 +87,8 @@ public class OwaspAgentSecurityGuard {
 
     /**
      * Enforces input length bounds to protect against DoS and context exhaustion (LLM08, LLM10).
+     *
+     * @param question the question to validate
      */
     public void validateInputBounds(Question question) {
         if (question == null) {
@@ -101,6 +103,9 @@ public class OwaspAgentSecurityGuard {
 
     /**
      * Sanitizes question input by neutralizing prompt injections and scrubbing sensitive PII/secrets (LLM01, LLM02).
+     *
+     * @param question the question to sanitize
+     * @return the sanitized question
      */
     public Question sanitizeInput(Question question) {
         if (question == null) return null;
@@ -130,6 +135,9 @@ public class OwaspAgentSecurityGuard {
 
     /**
      * Detects direct or indirect prompt injection patterns in input text (LLM01).
+     *
+     * @param text the text to inspect
+     * @return true if an injection pattern is detected
      */
     public boolean detectPromptInjection(String text) {
         if (text == null || text.isBlank()) return false;
@@ -143,6 +151,9 @@ public class OwaspAgentSecurityGuard {
 
     /**
      * Neutralizes detected prompt injection patterns by redacting adversarial instructions.
+     *
+     * @param text the input text
+     * @return sanitized text with redacted injection tokens
      */
     public String neutralizePromptInjection(String text) {
         if (text == null) return null;
@@ -155,6 +166,9 @@ public class OwaspAgentSecurityGuard {
 
     /**
      * Scrubs PII, emails, phones, SSNs, and API credentials from text (LLM02).
+     *
+     * @param text the text to scrub
+     * @return text with scrubbed sensitive information
      */
     public String scrubSensitiveData(String text) {
         if (text == null || text.isBlank()) return text;
@@ -168,6 +182,9 @@ public class OwaspAgentSecurityGuard {
 
     /**
      * Checks if a target model is in the approved whitelist (LLM03).
+     *
+     * @param modelName name of the target LLM
+     * @return true if the model is approved
      */
     public boolean isApprovedModel(String modelName) {
         if (modelName == null) return false;
@@ -176,6 +193,9 @@ public class OwaspAgentSecurityGuard {
 
     /**
      * Cleans raw LLM output by removing markdown fences, neutralizing scripts, and scrubbing sensitive data (LLM05).
+     *
+     * @param rawOutput the raw output text from LLM
+     * @return cleaned and sanitized output
      */
     public String cleanAndSanitizeOutput(String rawOutput) {
         if (rawOutput == null || rawOutput.isBlank()) return null;
@@ -213,6 +233,9 @@ public class OwaspAgentSecurityGuard {
 
     /**
      * Detects if the generated output reflects internal system instructions (LLM07).
+     *
+     * @param output the generated output text
+     * @return true if system prompt signature is found
      */
     public boolean containsSystemPromptLeakage(String output) {
         if (output == null || output.isBlank()) return false;
@@ -226,6 +249,9 @@ public class OwaspAgentSecurityGuard {
 
     /**
      * Neutralizes reflected system instructions.
+     *
+     * @param output the text containing reflected instructions
+     * @return sanitized output
      */
     public String neutralizeSystemPromptLeakage(String output) {
         if (output == null) return null;

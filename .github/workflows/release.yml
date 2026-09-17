@@ -1,0 +1,222 @@
+name: Release Pipeline
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'default'
+      - '*ver_[0-9]+.[0-9]+.[0-9]+*'
+      - '**ver_*'
+      - '*ver_*'
+      - '**/ver_*'
+    tags:
+      - 'v*'
+      - 'ver_*'
+  pull_request:
+    branches:
+      - 'main'
+      - 'default'
+      - '*ver_[0-9]+.[0-9]+.[0-9]+*'
+      - '**ver_*'
+      - '*ver_*'
+      - '**/ver_*'
+  workflow_dispatch:
+    inputs:
+      publish_libraries:
+        description: 'Publish Java libraries to Maven Central / GitHub Packages'
+        type: boolean
+        default: true
+      publish_frontend:
+        description: 'Publish Frontend npm package (@anvaya-prajna/explanation-player)'
+        type: boolean
+        default: true
+      publish_docker:
+        description: 'Build & Push Docker images to GHCR'
+        type: boolean
+        default: true
+      create_github_release:
+        description: 'Create GitHub Release with notes'
+        type: boolean
+        default: true
+      custom_version:
+        description: 'Custom version override (e.g. 1.0.0). Leave blank for auto-detection'
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  publish-libraries:
+    name: Publish Java Libraries (Maven / GH Packages)
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.publish_libraries)
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Publish Libraries to GitHub Packages & Maven Central
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: ./gradlew publish --no-daemon
+
+  publish-frontend:
+    name: Publish Frontend Package (@anvaya-prajna/explanation-player)
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.publish_frontend)
+    defaults:
+      run:
+        working-directory: packages/explanation-player
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@anvaya-prajna'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Build Library Bundle
+        run: npm run build:lib
+
+      - name: Publish Package to GitHub NPM Registry
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm publish --access public
+
+  publish-docker:
+    name: Build & Push Docker Images (GHCR)
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.publish_docker)
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Extract Release Meta & Lowercase Repository Owner
+        id: get_meta
+        shell: bash
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "OWNER_LC=${OWNER_LC}" >> $GITHUB_OUTPUT
+
+          if [[ -n "${{ inputs.custom_version }}" ]]; then
+            VERSION="${{ inputs.custom_version }}"
+            TAG_NAME="v${VERSION#v}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            RAW_TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${RAW_TAG#v}"
+            VERSION="${VERSION#ver_}"
+            TAG_NAME="${RAW_TAG}"
+          elif [[ "${{ github.ref_name }}" =~ ver_([0-9]+\.[0-9]+\.[0-9]+.*) ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            TAG_NAME="v${VERSION}"
+          elif [[ "${{ github.ref_name }}" == "main" || "${{ github.ref_name }}" == "default" ]]; then
+            VERSION="latest"
+            TAG_NAME="v$(date +'%Y.%m.%d-%H%M%S')"
+          else
+            VERSION="${{ github.ref_name }}"
+            TAG_NAME="v-${{ github.ref_name }}"
+          fi
+
+          echo "Extracted Owner (lowercase): $OWNER_LC"
+          echo "Extracted Version: $VERSION"
+          echo "Release Tag: $TAG_NAME"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push explain-service Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ steps.get_meta.outputs.OWNER_LC }}/explain-service:latest
+            ghcr.io/${{ steps.get_meta.outputs.OWNER_LC }}/explain-service:${{ steps.get_meta.outputs.VERSION }}
+
+      - name: Build and Push explain-player Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./packages/explanation-player
+          file: ./packages/explanation-player/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ steps.get_meta.outputs.OWNER_LC }}/explain-player:latest
+            ghcr.io/${{ steps.get_meta.outputs.OWNER_LC }}/explain-player:${{ steps.get_meta.outputs.VERSION }}
+
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.create_github_release)
+    needs: [publish-libraries, publish-frontend, publish-docker]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract Tag / Release Version
+        id: release_meta
+        shell: bash
+        run: |
+          if [[ -n "${{ inputs.custom_version }}" ]]; then
+            TAG_NAME="v${{ inputs.custom_version }}"
+            TAG_NAME="v${TAG_NAME#v}"
+            TAG_NAME="v${TAG_NAME#v}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          elif [[ "${{ github.ref_name }}" =~ ver_([0-9]+\.[0-9]+\.[0-9]+.*) ]]; then
+            TAG_NAME="v${BASH_REMATCH[1]}"
+          elif [[ "${{ github.ref_name }}" == "main" || "${{ github.ref_name }}" == "default" ]]; then
+            TAG_NAME="v$(date +'%Y.%m.%d-%H%M%S')"
+          else
+            TAG_NAME="v-${{ github.ref_name }}"
+          fi
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_meta.outputs.TAG_NAME }}
+          name: Release ${{ steps.release_meta.outputs.TAG_NAME }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

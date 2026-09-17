@@ -1,0 +1,21 @@
+# Codeowners for Anvaya-Prajna
+
+# Global owners
+* @Anvaya-Prajna-AI/core-maintainers
+
+# Libraries
+/libraries/explanation-ir/  @Anvaya-Prajna-AI/core-engine
+/libraries/math-core/        @Anvaya-Prajna-AI/math-team
+/libraries/reasoning-core/   @Anvaya-Prajna-AI/reasoning-team
+/libraries/validation-core/  @Anvaya-Prajna-AI/validation-team
+/libraries/explain-core/     @Anvaya-Prajna-AI/core-engine
+
+# Services
+/services/explain-service/   @Anvaya-Prajna-AI/backend-team
+
+# Packages (Frontend)
+/packages/explanation-player/ @Anvaya-Prajna-AI/frontend-team
+
+# CI / Infrastructure
+/.github/                    @Anvaya-Prajna-AI/infra-maintainers
+/docker-compose.yml          @Anvaya-Prajna-AI/infra-maintainers

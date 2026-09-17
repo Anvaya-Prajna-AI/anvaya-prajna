@@ -1,0 +1,30 @@
+name: ✨ Feature Request
+description: Suggest an idea or new curriculum domain for Anvaya-Prajna
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature for Anvaya-Prajna!
+  - type: input
+    id: feature-title
+    attributes:
+      label: Feature Title
+      placeholder: e.g. Support for Trigonometry and Triangle Similarity
+    validations:
+      required: true
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: Problem / Motivation
+      description: Is your feature request related to a problem or educational need?
+      placeholder: A clear and concise description of the motivation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution / Approach
+      description: Describe how the reasoning plugin or Explanation IR should handle this.
+    validations:
+      required: true

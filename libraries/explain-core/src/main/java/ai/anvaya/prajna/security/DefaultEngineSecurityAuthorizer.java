@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 /**
- * Default RBAC Authorizer implementation (ASI03: Identity & Privilege Abuse defense).
+ * Default RBAC Authorizer implementation (ASI03: Identity and Privilege Abuse defense).
  * Enforces role-based permissions:
  * - Anyone can generate (Student, Educator, Admin, Anonymous)
  * - Only Educator or Admin can Review

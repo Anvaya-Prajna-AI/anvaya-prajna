@@ -4,7 +4,9 @@
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)]()
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.3-green.svg)]()
 [![React](https://img.shields.io/badge/React-18-blue.svg)]()
+[![JaCoCo Coverage](https://img.shields.io/badge/coverage-%E2%89%A570%25-brightgreen.svg)]()
 [![OWASP Agentic Top 10](https://img.shields.io/badge/OWASP%20Agentic-Compliant-blue.svg)]()
+[![OpenAPI 3](https://img.shields.io/badge/OpenAPI-3.0-brightgreen.svg)](http://localhost:8080/swagger-ui.html)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 **An educational reasoning & explanation engine that transforms assessment questions and verified solutions into structured, student-friendly, multi-modal explanations.**
@@ -79,19 +81,20 @@ anvaya-prajna/
 │
 ├── services/
 │   └── explain-service/      # Example Reference Spring Boot REST Microservice
-│       ├── api/              # Controllers (Explanation, Hint, Validation, Why)
-│       ├── security/         # Reference ExampleSecurityContextFilter (Header/JWT mapping)
-│       └── resources/        # Flyway migrations, application.yml, static assets
+│       ├── api/              # Controllers (Explanation, Hint, Validation, Why) with OpenAPI 3
+│       ├── security/         # SecurityConfig (JWT/OAuth2 Resource Server + Header mapping)
+│       ├── observability/    # LiteLLM Health Indicator, OpenTelemetry OTLP tracing
+│       └── resources/        # Flyway migrations, application.yml, logback structured JSON
 │
 ├── packages/
-│   └── explanation-player/   # React 18 / TypeScript / Vite student explanation player
+│   └── explanation-player/   # React 18 / TypeScript / Vite / Vitest explanation player
 │       ├── src/components/   # Player, navigator, hint panel, verification cards
 │       ├── src/renderers/    # KaTeX math, SVG diagrams, reasoning DAG graph
 │       ├── Dockerfile        # Multi-stage Alpine container with Nginx reverse proxy
 │       └── nginx.conf        # Nginx configuration routing /api/* to explain-service
 │
-├── docs/                     # Detailed architecture and SRS documentation
-├── docker-compose.yml        # Multi-container orchestration (Player UI, App, Postgres, Redis, LiteLLM)
+├── docs/                     # Documentation (Migrations, Frontend Pipeline, Releasing, SRS)
+├── docker-compose.yml        # Orchestration (UI, App, Postgres, Redis, LiteLLM, Jaeger, Prometheus, Grafana)
 └── litellm-config.yaml       # Multi-provider LLM proxy configuration
 ```
 
@@ -125,18 +128,23 @@ The bundled `services:explain-service` serves as an **example reference microser
 - **Node.js 20+** (for frontend development)
 - **Docker & Docker Compose** (for containerized setup)
 
-### Building the Project
+### Building and Testing
 
 ```bash
 # Build all backend libraries and services
 ./gradlew build
 
-# Run unit and integration tests across all modules
-./gradlew test
+# Run unit and integration tests and verify JaCoCo >= 70% coverage threshold
+./gradlew check
 
-# Build the Explanation Player UI
+# Generate aggregated JaCoCo multi-module coverage report
+./gradlew codeCoverageReport
+
+# Test and lint the Explanation Player UI
 cd packages/explanation-player
 npm ci
+npm test
+npm run lint
 npm run build
 ```
 
@@ -146,13 +154,18 @@ npm run build
    ```bash
    cp .env.example .env
    ```
-2. Start all services (Explain Player UI, Explain Service, Postgres, Redis, and LiteLLM):
+2. Start all services:
    ```bash
    docker compose up --build -d
    ```
-3. Access the services:
+3. Access the endpoints:
    - **Explain Player UI**: [http://localhost:3000](http://localhost:3000)
-   - **Explain Service API**: [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health)
+   - **OpenAPI Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+   - **OpenAPI JSON Spec**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+   - **Actuator Health & Metrics**: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+   - **Prometheus Metrics**: [http://localhost:9090](http://localhost:9090)
+   - **Grafana Dashboard**: [http://localhost:3001](http://localhost:3001) (admin/admin)
+   - **Jaeger Tracing UI**: [http://localhost:16686](http://localhost:16686)
    - **LiteLLM Gateway**: [http://localhost:4000](http://localhost:4000)
 
 ---
@@ -206,6 +219,18 @@ X-User-Roles: ADMIN
 
 ---
 
-## 6. License
+## 6. Repository Standards & Contributing
+
+- [Contributing Guidelines](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security Policy & OWASP ASI Compliance](SECURITY.md)
+- [Database Migrations Guide](docs/MIGRATIONS.md)
+- [Frontend Build Pipeline](docs/FRONTEND_PIPELINE.md)
+- [Release Process & SemVer](docs/RELEASING.md)
+- [Changelog](CHANGELOG.md)
+
+---
+
+## 7. License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
