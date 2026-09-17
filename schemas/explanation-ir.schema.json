@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://anvaya-prajna.ai/schemas/v1/explanation-ir.schema.json",
+  "title": "ExplanationIR",
+  "description": "Canonical Explanation Intermediate Representation (IR) specification for Anvaya-Prajna-AI",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "explanationId",
+    "questionId",
+    "problem",
+    "steps"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["1.0", "1.1"]
+    },
+    "explanationId": {
+      "type": "string"
+    },
+    "questionId": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["DRAFT", "VALIDATING", "NEEDS_REVIEW", "APPROVED", "PUBLISHED", "DEPRECATED", "REJECTED"]
+    },
+    "problem": {
+      "type": "object",
+      "required": ["statement"],
+      "properties": {
+        "statement": { "type": "string" },
+        "context": { "type": "string" },
+        "domain": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "authoritativeAnswer": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "concepts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "facts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "reasoningGraph": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type", "content"],
+            "properties": {
+              "id": { "type": "string" },
+              "type": { "type": "string", "enum": ["FACT", "RULE", "RESULT", "CONCLUSION", "VERIFICATION"] },
+              "content": { "type": "string" },
+              "source": { "type": "string", "enum": ["GIVEN", "AI", "DETERMINISTIC"] },
+              "confidence": { "type": "number" },
+              "validationStatus": { "type": "string" }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to", "relationship"],
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "relationship": { "type": "string", "enum": ["DEPENDS_ON", "DERIVED_FROM", "CONTRADICTS", "SUPPORTS", "REQUIRES", "ELIMINATES", "VERIFIES"] },
+              "justification": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "reasoning-step.schema.json"
+      }
+    },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "expression": { "type": "string" },
+        "expected": { "type": "boolean" },
+        "actual": { "type": "boolean" },
+        "passed": { "type": "boolean" },
+        "details": { "type": "string" }
+      }
+    },
+    "hints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "level", "text"],
+        "properties": {
+          "id": { "type": "string" },
+          "level": { "type": "integer" },
+          "text": { "type": "string" },
+          "mathExpression": { "type": "string" }
+        }
+      }
+    },
+    "misconceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "incorrectReasoning", "whyWrong", "correctedReasoning"],
+        "properties": {
+          "id": { "type": "string" },
+          "incorrectReasoning": { "type": "string" },
+          "whyWrong": { "type": "string" },
+          "correctedReasoning": { "type": "string" }
+        }
+      }
+    },
+    "diagrams": {
+      "type": "array",
+      "items": {
+        "$ref": "diagram-ir.schema.json"
+      }
+    },
+    "animation": {
+      "$ref": "animation-ir.schema.json"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "language": { "type": "string" },
+        "studentLevel": { "type": "string" },
+        "modelVersion": { "type": "string" },
+        "compilerVersion": { "type": "string" },
+        "generationLatencyMs": { "type": "number" },
+        "qualityScore": { "type": "number" }
+      }
+    }
+  }
+}

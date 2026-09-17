@@ -1,0 +1,97 @@
+model_list:
+  # ============================================================
+  # Amazon Bedrock Nova Models
+  # ============================================================
+  - model_name: amazon-nova-pro
+    litellm_params:
+      model: bedrock/amazon.nova-pro-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+      rpm: 200
+
+  - model_name: amazon-nova-lite
+    litellm_params:
+      model: bedrock/amazon.nova-lite-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+      rpm: 500
+
+  - model_name: amazon-nova-micro
+    litellm_params:
+      model: bedrock/amazon.nova-micro-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+      rpm: 1000
+
+  # ============================================================
+  # Google Gemini Models
+  # ============================================================
+  - model_name: gemini-1.5-pro
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+      rpm: 200
+
+  - model_name: gemini-1.5-flash
+    litellm_params:
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+      rpm: 500
+
+  - model_name: gemini-2.0-flash
+    litellm_params:
+      model: gemini/gemini-2.0-flash-exp
+      api_key: os.environ/GEMINI_API_KEY
+      rpm: 500
+
+  # ============================================================
+  # OpenAI & Open-Weights Models
+  # ============================================================
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+      rpm: 500
+
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+      rpm: 200
+
+  - model_name: claude-3-5-sonnet
+    litellm_params:
+      model: anthropic/claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+      rpm: 200
+
+  - model_name: groq-llama-3.3-70b
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+      rpm: 500
+
+  - model_name: ollama-llama3
+    litellm_params:
+      model: ollama/llama3.2
+      api_base: http://host.docker.internal:11434
+
+router_settings:
+  routing_strategy: simple-shuffle
+  timeout: 30
+  num_retries: 3
+  fallbacks:
+    - amazon-nova-pro: ["gemini-1.5-pro", "amazon-nova-lite"]
+    - amazon-nova-lite: ["gemini-1.5-flash", "amazon-nova-micro"]
+    - amazon-nova-micro: ["gemini-1.5-flash"]
+    - gemini-1.5-pro: ["amazon-nova-pro", "gemini-1.5-flash"]
+    - gemini-1.5-flash: ["amazon-nova-lite", "gemini-2.0-flash"]
+    - gemini-2.0-flash: ["gemini-1.5-flash", "amazon-nova-lite"]
+    - gpt-4o: ["amazon-nova-pro", "gemini-1.5-pro", "claude-3-5-sonnet"]
+    - gpt-4o-mini: ["amazon-nova-lite", "gemini-1.5-flash", "groq-llama-3.3-70b"]
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

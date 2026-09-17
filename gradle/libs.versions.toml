@@ -1,0 +1,47 @@
+[versions]
+java = "21"
+spring-boot = "3.4.2"
+spring-ai = "1.0.0-M6"
+spring-dependency-management = "1.1.7"
+lombok = "1.18.36"
+jackson = "2.18.2"
+exp4j = "0.4.8"
+json-schema-validator = "1.5.1"
+flyway = "10.20.0"
+postgres = "42.7.4"
+testcontainers = "1.20.4"
+opentelemetry = "1.45.0"
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+
+[libraries]
+# Jackson
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson" }
+
+# Lombok
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+
+# Math & Validation
+exp4j = { module = "net.objecthunter:exp4j", version.ref = "exp4j" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
+
+# Database
+postgres-driver = { module = "org.postgresql:postgresql", version.ref = "postgres" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+
+# Spring AI BOM
+spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref = "spring-ai" }
+spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai-spring-boot-starter" }
+spring-ai-ollama = { module = "org.springframework.ai:spring-ai-ollama-spring-boot-starter" }
+
+# OpenTelemetry
+otel-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry" }
+otel-sdk = { module = "io.opentelemetry:opentelemetry-sdk", version.ref = "opentelemetry" }
+
+# Testing
+testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+testcontainers-junit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }

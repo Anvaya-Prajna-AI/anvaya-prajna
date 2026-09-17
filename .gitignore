@@ -1,0 +1,38 @@
+# Gradle
+.gradle/
+build/
+*/build/
+*/*/build/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# OS / Logs
+.DS_Store
+Thumbs.db
+*.log
+.system_generated/
+
+# Environment
+.env
+
+# Node / Frontend
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+dist-app/
+**/dist-app/
+*.tsbuildinfo
+
+

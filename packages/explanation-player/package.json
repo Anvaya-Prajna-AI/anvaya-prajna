@@ -1,0 +1,36 @@
+{
+  "name": "@anvaya-prajna/explanation-player",
+  "version": "1.0.0",
+  "description": "Student educational explanation player component library for Anvaya-Prajna Explanation IR",
+  "type": "module",
+  "main": "./dist/explanation-player.umd.cjs",
+  "module": "./dist/explanation-player.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/explanation-player.js",
+      "require": "./dist/explanation-player.umd.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:lib": "tsc && vite build --mode lib",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "katex": "^0.16.11",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.7",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2"
+  }
+}

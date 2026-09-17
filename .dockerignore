@@ -1,0 +1,12 @@
+.git
+.gitignore
+.gradle
+build
+**/build
+.idea
+.agents
+.gemini
+*.log
+packages/explanation-player/node_modules
+packages/explanation-player/dist
+packages/explanation-player/dist-app

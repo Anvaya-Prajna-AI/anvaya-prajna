@@ -1,0 +1,76 @@
+package ai.anvaya.prajna.validation;
+
+import ai.anvaya.prajna.ir.Question;
+import ai.anvaya.prajna.ir.ReasoningStep;
+import ai.anvaya.prajna.ir.StepType;
+import ai.anvaya.prajna.reasoning.ReasoningProposal;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+public class LogicValidator implements ProposalValidator {
+
+    @Override
+    public String getName() {
+        return "LogicValidator";
+    }
+
+    @Override
+    public ValidationResult validate(Question question, ReasoningProposal proposal) {
+        if (proposal == null || proposal.getSteps() == null) {
+            return ValidationResult.builder().status(ValidationStatus.PASSED).score(1.0).build();
+        }
+
+        List<ValidationViolation> violations = new ArrayList<>();
+        Set<String> declaredIds = new HashSet<>();
+
+        Set<String> validSourceIds = new HashSet<>(declaredIds);
+        if (proposal.getFacts() != null) {
+            for (int i = 0; i < proposal.getFacts().size(); i++) {
+                validSourceIds.add("f" + (i + 1));
+                validSourceIds.add("fact-" + (i + 1));
+                validSourceIds.add(String.valueOf(i + 1));
+            }
+        }
+
+        for (ReasoningStep step : proposal.getSteps()) {
+            if (step.getId() != null) {
+                if (declaredIds.contains(step.getId())) {
+                    violations.add(ValidationViolation.builder()
+                            .stepId(step.getId())
+                            .code("DUPLICATE_STEP_ID")
+                            .message("Duplicate step ID: " + step.getId())
+                            .severity(ValidationSeverity.ERROR)
+                            .build());
+                }
+                declaredIds.add(step.getId());
+                validSourceIds.add(step.getId());
+            }
+
+            // Verify inputs reference known previous steps or facts
+            if (step.getInputs() != null) {
+                for (String input : step.getInputs()) {
+                    if (!validSourceIds.contains(input) && !input.startsWith("f") && !input.startsWith("fact") && !input.equals(step.getId())) {
+                        violations.add(ValidationViolation.builder()
+                                .stepId(step.getId())
+                                .code("DANGLING_INPUT_REFERENCE")
+                                .message("Step " + step.getId() + " references undefined input: " + input)
+                                .severity(ValidationSeverity.WARNING)
+                                .build());
+                    }
+                }
+            }
+        }
+
+        ValidationStatus status = violations.stream().anyMatch(v -> v.getSeverity() == ValidationSeverity.ERROR)
+                ? ValidationStatus.FAILED : ValidationStatus.PASSED;
+
+        return ValidationResult.builder()
+                .status(status)
+                .score(status == ValidationStatus.PASSED ? 1.0 : 0.5)
+                .violations(violations)
+                .build();
+    }
+}

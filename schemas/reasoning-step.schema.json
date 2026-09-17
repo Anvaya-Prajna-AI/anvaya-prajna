@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://anvaya-prajna.ai/schemas/v1/reasoning-step.schema.json",
+  "title": "ReasoningStep",
+  "description": "Schema for an atomic reasoning step in Anvaya-Prajna-AI",
+  "type": "object",
+  "required": ["id", "type"],
+  "properties": {
+    "id": { "type": "string" },
+    "sequence": { "type": "integer" },
+    "type": {
+      "type": "string",
+      "enum": [
+        "GIVEN",
+        "DEFINE",
+        "OBSERVE",
+        "IDENTIFY",
+        "APPLY_RULE",
+        "SUBSTITUTE",
+        "CALCULATE",
+        "TRANSFORM",
+        "COMPARE",
+        "ELIMINATE",
+        "INFER",
+        "CONCLUDE",
+        "VERIFY"
+      ]
+    },
+    "inputs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "operation": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "target": { "type": "string" },
+        "value": {}
+      }
+    },
+    "before": { "type": "string" },
+    "after": { "type": "string" },
+    "outputs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "justification": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "depth": { "type": "integer" },
+        "subReasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "representations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "TEXT",
+          "MATH",
+          "TABLE",
+          "SVG",
+          "GEOMETRY",
+          "REASONING_GRAPH",
+          "MERMAID",
+          "ANIMATION",
+          "HIGHLIGHT"
+        ]
+      }
+    },
+    "math": {
+      "$ref": "math-expression.schema.json"
+    },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "expression": { "type": "string" },
+        "passed": { "type": "boolean" }
+      }
+    },
+    "misconception": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "incorrectReasoning": { "type": "string" },
+        "whyWrong": { "type": "string" },
+        "correctedReasoning": { "type": "string" }
+      }
+    }
+  }
+}

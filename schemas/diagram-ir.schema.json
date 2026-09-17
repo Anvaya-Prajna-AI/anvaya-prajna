@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://anvaya-prajna.ai/schemas/v1/diagram-ir.schema.json",
+  "title": "DiagramIR",
+  "description": "Semantic declarative diagram specification",
+  "type": "object",
+  "required": ["type"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": {
+      "type": "string",
+      "enum": [
+        "geometry",
+        "flow",
+        "bar",
+        "tree",
+        "venn",
+        "number-line",
+        "relationship",
+        "free-body",
+        "circuit",
+        "kinematics-graph",
+        "reaction-energy",
+        "chemical-equation",
+        "titration-curve"
+      ]
+    },
+    "title": { "type": "string" },
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "label": { "type": "string" },
+          "position": {
+            "type": "array",
+            "items": { "type": "number" }
+          },
+          "properties": { "type": "object" }
+        }
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "from", "to"],
+        "properties": {
+          "type": { "type": "string" },
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "label": { "type": "string" },
+          "properties": { "type": "object" }
+        }
+      }
+    }
+  }
+}
