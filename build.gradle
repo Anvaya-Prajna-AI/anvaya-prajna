@@ -24,73 +24,78 @@ allprojects {
 }
 
 subprojects {
-    apply plugin: 'java'
-    apply plugin: 'jacoco'
+    if (subprojects.isEmpty()) {
+        apply plugin: 'java'
+        apply plugin: 'jacoco'
 
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
+        java {
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(21)
+            }
         }
-    }
 
-    tasks.withType(JavaCompile).configureEach {
-        options.encoding = 'UTF-8'
-        options.compilerArgs.addAll(['-parameters'])
-    }
-
-    tasks.withType(Javadoc).configureEach {
-        options.encoding = 'UTF-8'
-        options.addStringOption('Xdoclint:none', '-quiet')
-        if (JavaVersion.current().isJava9Compatible()) {
-            options.addBooleanOption('html5', true)
+        tasks.withType(JavaCompile).configureEach {
+            options.encoding = 'UTF-8'
+            options.compilerArgs.addAll(['-parameters'])
         }
-    }
 
-    tasks.withType(Test).configureEach {
-        useJUnitPlatform()
-        testLogging {
-            events 'passed', 'skipped', 'failed'
+        tasks.withType(Javadoc).configureEach {
+            options.encoding = 'UTF-8'
+            options.addStringOption('Xdoclint:none', '-quiet')
+            if (JavaVersion.current().isJava9Compatible()) {
+                options.addBooleanOption('html5', true)
+            }
         }
-        finalizedBy jacocoTestReport
-    }
 
-    jacoco {
-        toolVersion = "0.8.12"
-    }
-
-    jacocoTestReport {
-        dependsOn test
-        reports {
-            xml.required = true
-            html.required = true
-            csv.required = false
+        tasks.withType(Test).configureEach {
+            useJUnitPlatform()
+            testLogging {
+                events 'passed', 'skipped', 'failed'
+            }
+            finalizedBy jacocoTestReport
         }
-    }
 
-    jacocoTestCoverageVerification {
-        dependsOn jacocoTestReport
-        violationRules {
-            rule {
-                limit {
-                    minimum = 0.70
+        jacoco {
+            toolVersion = "0.8.12"
+        }
+
+        jacocoTestReport {
+            dependsOn test
+            reports {
+                xml.required = true
+                html.required = true
+                csv.required = false
+            }
+        }
+
+        jacocoTestCoverageVerification {
+            dependsOn jacocoTestReport
+            violationRules {
+                rule {
+                    limit {
+                        minimum = 0.70
+                    }
                 }
             }
         }
-    }
 
-    // Include verification in check task
-    check.dependsOn jacocoTestCoverageVerification
+        // Include verification in check task
+        check.dependsOn jacocoTestCoverageVerification
+    }
 }
 
 // Aggregated JaCoCo report for multi-module project
 task codeCoverageReport(type: JacocoReport) {
-    executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
-    
-    subprojects.each { subproject ->
-        if (subproject.plugins.hasPlugin('java')) {
-            sourceSets subproject.sourceSets.main
-        }
-    }
+    def javaProjects = subprojects.findAll { it.plugins.hasPlugin('java') && it.subprojects.isEmpty() }
+
+    dependsOn(javaProjects.collect { p -> p.tasks.matching { t -> t.name == 'jacocoTestReport' || t.name == 'test' } })
+
+    executionData(files(javaProjects.collect { p ->
+        fileTree(dir: "${p.buildDir}/jacoco", include: "*.exec")
+    }))
+
+    sourceDirectories.setFrom(files(javaProjects.sourceSets.main.allSource.srcDirs))
+    classDirectories.setFrom(files(javaProjects.sourceSets.main.output))
 
     reports {
         xml.required = true
@@ -101,7 +106,7 @@ task codeCoverageReport(type: JacocoReport) {
 }
 
 // Maven Publishing configuration for all 5 libraries (Issue #7)
-configure(subprojects.findAll { it.path.startsWith(':libraries:') }) {
+configure(subprojects.findAll { it.path.startsWith(':libraries:') && it.subprojects.isEmpty() }) {
     apply plugin: 'maven-publish'
     apply plugin: 'signing'
 
