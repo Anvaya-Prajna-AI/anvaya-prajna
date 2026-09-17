@@ -96,7 +96,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Explain Service Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -104,7 +104,7 @@ jobs:
           tags: anvaya-prajna/explain-service:test
 
       - name: Build Explain Player Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./packages/explanation-player
           file: ./packages/explanation-player/Dockerfile

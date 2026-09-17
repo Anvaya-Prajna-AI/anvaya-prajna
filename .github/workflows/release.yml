@@ -161,7 +161,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push explain-service Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -171,7 +171,7 @@ jobs:
             ghcr.io/${{ steps.get_meta.outputs.OWNER_LC }}/explain-service:${{ steps.get_meta.outputs.VERSION }}
 
       - name: Build and Push explain-player Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./packages/explanation-player
           file: ./packages/explanation-player/Dockerfile
