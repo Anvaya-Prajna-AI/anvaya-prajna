@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main, master, default, '*ver_*']
+    branches: [main, master, 1default, '*ver_*']
   pull_request:
-    branches: [main, master, default, '*ver_*']
+    branches: [main, master, 1default, '*ver_*']
   workflow_dispatch:
 
 concurrency:
