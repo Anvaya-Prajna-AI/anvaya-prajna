@@ -38,6 +38,14 @@ subprojects {
         options.compilerArgs.addAll(['-parameters'])
     }
 
+    tasks.withType(Javadoc).configureEach {
+        options.encoding = 'UTF-8'
+        options.addStringOption('Xdoclint:none', '-quiet')
+        if (JavaVersion.current().isJava9Compatible()) {
+            options.addBooleanOption('html5', true)
+        }
+    }
+
     tasks.withType(Test).configureEach {
         useJUnitPlatform()
         testLogging {
