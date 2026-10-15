@@ -1,7 +1,7 @@
 [versions]
 java = "21"
 spring-boot = "4.1.1"
-spring-ai = "1.0.0-M6"
+spring-ai = "2.1.0-M1"
 spring-dependency-management = "1.1.7"
 lombok = "1.18.36"
 jackson = "2.22.3"
